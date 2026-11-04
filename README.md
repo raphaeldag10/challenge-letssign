@@ -98,125 +98,106 @@ Regras associadas (p. 17, 22):
 
 ---
 
-## 3. O que já está implementado
+## 3. O que está implementado
 
-### Projeto e configuração
-- Projeto Android com Jetpack Compose e Material 3 (`app/build.gradle.kts`).
-- `minSdk 28`, `targetSdk 37`, Java/Kotlin 17.
-- Room 2.6.1 com KSP e Lifecycle ViewModel Compose.
-- Tema da aplicação (`ui/theme/`).
+Tudo abaixo foi implementado e compila (`./gradlew :app:assembleDebug`). Os testes unitários passam; o fluxo não foi testado manualmente em aparelho.
 
-### Banco de dados Room (`app/src/main/java/br/com/fiap/letssign/data/local/`)
-Banco `letssign_database`, versão 1, com as entidades:
+### Base do projeto
+- Android com Jetpack Compose e Material 3, `minSdk 28`, `targetSdk 37`, Java/Kotlin 17.
+- Room 2.8.5 com KSP 2.2.10-2.0.2 e Lifecycle ViewModel Compose.
+- Injeção manual de dependências em `AppContainer.kt`, criada pelo `LetsSignApp`.
+- `FileProvider` (`res/xml/file_paths.xml`) para abrir PDFs em outro aplicativo.
+
+### Persistência (`data/local/`)
+Banco `letssign_database`, versão 2:
 
 | Entidade (tabela) | Função |
 | --- | --- |
-| `UserEntity` (`users`) | Usuário com nome, e-mail (único), telefone, hash da senha e papel (`ADMIN` / `SIGNATORY`) |
-| `DocumentEntity` (`documents`) | Documento com título, `filePath`, status (`PENDING`, `PARTIALLY_SIGNED`, `COMPLETED`), criador e data |
-| `DocumentSignatoryEntity` (`document_signatories`) | Vínculo documento ↔ usuário com papel (`CONTRATANTE`, `CONTRATADO`, `TESTEMUNHA`), `hasSigned` e `signedAt` |
-| `SignatureFieldEntity` (`signature_fields`) | Campo de assinatura: página e retângulo normalizado (x, y, largura, altura) |
-| `DocumentHistoryEntity` (`document_history`) | Linha do tempo com tipo de evento, descrição e timestamp |
+| `UserEntity` (`users`) | Nome, e-mail (único), telefone, hash da senha e papel (`ADMIN` / `SIGNATORY`) |
+| `DocumentEntity` (`documents`) | Título, `filePath`, status, criador, mensagem do convite, `versionNumber`, `parentDocumentId` e `finalFilePath` |
+| `DocumentSignatoryEntity` (`document_signatories`) | Participante do documento, função, `hasSigned`, `signedAt` e `signaturePath` (PNG da assinatura) |
+| `SignatureFieldEntity` (`signature_fields`) | Campo: página e retângulo normalizado (0 a 1) |
+| `DocumentHistoryEntity` (`document_history`) | Linha do tempo: criação, assinaturas, situação parcial e conclusão |
 
-DAOs:
-- `UserDao`: criação transacional do primeiro Admin (`createInitialAdmin`, recusa um segundo Admin), CRUD de usuário, busca por e-mail/ID, lista de signatários.
-- `DocumentDao`: criação transacional do envio (`insertFullDocumentFlow`), consultas de documentos por status e por signatário (pendentes/assinados), campos, signatários e histórico.
+Projeções em `data/local/model/Projections.kt`: `DocumentSummary` (lista, com progresso) e `SignatoryDetail` (participantes).
 
-Conversores de tipo em `Converters.kt` para os enums.
+- `UserDao`: primeiro Admin de forma transacional, CRUD, lista de signatários.
+- `DocumentDao`: envio transacional (`insertFullDocumentFlow`), listas por situação e por participante, detalhe de participantes, acesso, histórico.
 
-### Autenticação e cadastro (`data/repository/UserRepository.kt`)
-- `login(email, senha)` retorna `LoggedUser` (id, nome, e-mail, papel) e guarda a sessão em memória; `logout()` encerra.
-- `setupInitialAdmin(...)`: configuração inicial, sem senha padrão no código.
-- `registerSignatory(...)` e `updateSignatory(...)`: exclusivos para sessão ADMIN.
-- Validações: nome com ao menos 3 caracteres, e-mail válido (normalizado em minúsculas), telefone com 10 a 15 dígitos, senha com ao menos 8 caracteres; e-mail duplicado é recusado.
-- Na edição, senha em branco mantém a anterior.
+### Regras de negócio
+- **Envio** (`RoomDocumentRepository.createDocumentFlow`, transacional): título obrigatório, PDF obrigatório, ao menos um signatário, sem signatário repetido, ao menos um campo por signatário, campos dentro da página.
+- **Campos**: referenciam o participante pelo `userId`; o DAO troca pelo ID gerado na mesma transação.
+- **Assinatura** (`signDocument`, transacional): bloqueia reassinatura; atualiza a participação, salva o caminho do PNG, registra o evento e recalcula a situação: Enviado → Parcialmente assinado → Concluído.
+- **Acesso** (`canAccess`): criador ou participante. Checado antes de abrir o documento ou o PDF.
+- **Usuários** (`UserRepository`): login PBKDF2, sessão observável (`StateFlow`), somente Admin cadastra ou edita signatários, e-mail duplicado recusado, senha em branco na edição mantém a atual.
+- **Senhas** (`PasswordHasher`): PBKDF2-HMAC-SHA256, 210.000 iterações, salt de 16 bytes.
 
-### Senhas (`PasswordHasher.kt`)
-- PBKDF2-HMAC-SHA256, 210.000 iterações, salt aleatório de 16 bytes, comparação em tempo constante.
-- Coberto por `PasswordHasherTest` (acerto, erro, salts diferentes, hash inválido).
+### PDF e arquivos (`data/file/`)
+- `PdfPages`: valida o PDF (cabeçalho `%PDF-`, abertura, páginas, protegido) com mensagens para o usuário; renderiza páginas com `PdfRenderer`.
+- `FileStorage`: copia o PDF para `filesDir/documents/`, salva a assinatura desenhada como PNG recortado em `filesDir/signatures/` e gera o PDF final em `filesDir/final/`, desenhando cada assinatura no campo com a proporção preservada.
+- `DocumentService.ensureFinalPdf`: gera o PDF final quando o documento está concluído e o reaproveita depois.
 
-### Fluxo de assinatura (`data/repository/RoomDocumentRepository.kt`)
-- `signDocument(documentId, userId)` marca a participação como assinada, registra evento `SIGNED` e recalcula o status: `COMPLETED` quando todos assinam, `PARTIALLY_SIGNED` quando alguns assinam, com evento `COMPLETED` ao final.
+### Telas (`ui/`)
+- **Entrada** (`AppRoot.kt`): navegação por pilha de rotas. Sem Admin, abre a configuração inicial; sem sessão, abre o login.
+- **Autenticação** (`auth/`): configuração do Admin e login com "E-mail ou senha incorretos.".
+- **Admin** (`admin/`): abas Documentos, Signatários e Conta.
+  - Documentos: filtros Todos, Enviados, Parciais e Concluídos, com progresso e estados vazios.
+  - Detalhe: participantes, situação, histórico, abrir PDF original e final, criar nova versão.
+  - Signatários: busca, cadastro e edição com validações.
+- **Novo documento** (`newdoc/`): assistente em quatro passos, com a barra inferior oculta.
+  - Documento: título e seleção de PDF, com validação antes de continuar.
+  - Pessoas: seleção múltipla, função por pessoa e confirmação ao remover quem tem campos.
+  - Campos: página por página, com adicionar, arrastar, redimensionar e excluir. Detecta sobreposição.
+  - Revisão: resumo, mensagem do convite e "Confirmar envio", com "Enviando…" para evitar toques repetidos.
+  - Nova versão: pré-preenchida a partir do documento original, com novo arquivo.
+- **Signatário** (`signatory/`): abas Pendentes e Assinados. A leitura mostra o PDF com os próprios campos em destaque. A tela de assinatura tem desenho com dedo, Limpar e Confirmar, e mostra a conclusão da participação.
+- **Comuns** (`common/`): barra de topo, renderização de página com sobreposição (`PdfPageImage`), campos somente leitura (`ReadOnlyFields`), status em português e abertura de PDF.
 
-### Contratos
-- `domain/repository/DocumentRepository.kt` define a interface de documentos (base para a futura troca por API REST).
-- Uma interface `UserRepository` também existe em `domain/` (ver seção 5, item sobre duplicidade).
+### Geometria
+- `FieldGeometry`: mover, redimensionar (tamanho mínimo e borda da página) e detectar sobreposição. Funções puras, cobertas por teste unitário.
+
+### Testes
+- `PasswordHasherTest` (3) e `FieldGeometryTest` (7): passam na JVM.
+- `DocumentFlowInstrumentedTest` (5): envio com campos, rejeição sem campo, transições de situação, reassinatura bloqueada e acesso. Compila; **não foi executado**.
 
 ### Documentação
-- `design/`: escopo da Sprint 1 (`ESCOPO-SPRINT-1.md`), guia de telas com 16 telas propostas (`GUIA-DE-TELAS.md`), pranchas PNG e pacote de design.
-- `docs/LOGIN-LOCAL.md`: como usar o login local.
+- `design/` (escopo da Sprint 1, guia de telas, pranchas) e `docs/LOGIN-LOCAL.md`.
 
 ---
 
-## 4. O que falta implementar
+## 4. O que ainda falta
 
-Prioridade: **P1** = necessário para o fluxo mínimo da Sprint 1 funcionar; **P2** = requisito do enunciado com implementação parcial; **P3** = melhoria ou acabamento.
+Esta seção lista só o que não está pronto. Os limites de implementação também estão na seção 11.
 
-### 4.1 Interface e navegação (P1)
-- [ ] Substituir `MainActivity` (template "Hello Android!") por navegação real.
-- [ ] Tela de login com e-mail e senha, com mensagem "E-mail ou senha incorretos." e roteamento por perfil.
-- [ ] Tela de configuração inicial do Admin (`setupInitialAdmin`).
-- [ ] Admin: lista de documentos com filtros (Todos, Enviados, Parciais, Concluídos) e botão "Novo documento".
-- [ ] Admin: lista de signatários, cadastro e edição (telas 03 e 04 do guia).
-- [ ] Signatário: abas Pendentes e Assinados, com "Abrir documento".
-- [ ] Conta: identificação, perfil e "Sair".
-- [ ] ViewModels ligando telas aos repositórios (`LoggedUser` deve ser exposto ao restante da UI).
+### 4.1 Para entregar (P1)
+- [ ] Validar o fluxo completo em aparelho ou emulador (roteiro na seção 11).
+- [ ] Executar `./gradlew :app:connectedDebugAndroidTest` em um dispositivo.
+- [ ] Apresentação (PPT ou PDF) com nome do projeto, integrantes e RMs, problemática, solução, tecnologias, fluxo, diferenciais e link do vídeo.
+- [ ] Vídeo demonstrativo de até 5 minutos.
+- [ ] Preencher nome do projeto, integrantes, RMs e link do vídeo no topo deste README.
 
-### 4.2 Novo documento, PDF e campos (P1)
-- [ ] Seletor de arquivo PDF (Storage Access Framework).
-- [ ] Validação do PDF (formato real, abertura, protegido/corrompido) antes de liberar "Continuar".
-- [ ] Copiar o PDF para o armazenamento interno do app e gravar caminho/data/status (opção 1 do enunciado) **ou** gravar o conteúdo como BLOB (opção 2). Escolher uma; o `DocumentEntity.filePath` já existe.
-- [ ] Renderização das páginas (miniaturas e visualização) — por exemplo, `PdfRenderer` do Android ou PDFBox-Android.
-- [ ] Editor de campos: adicionar, arrastar, redimensionar e excluir campos por página; cor/identificação por signatário.
-- [ ] Conversão entre coordenadas da tela e coordenadas normalizadas (0 a 1, relativas à página visível), conforme o contrato em `GUIA-DE-TELAS.md`.
-- [ ] Validação: campos dentro dos limites da página e sem sobreposição (recomendado no guia).
-- [ ] Tela de revisão com documento, signatários, funções, campos por página e mensagem do convite.
-- [ ] Mensagem de convite (campo no documento; hoje não existe no `DocumentEntity`).
+### 4.2 Aderência ao guia de telas (P2)
+- [ ] Cadastro de signatário dentro da etapa Pessoas (hoje é preciso cadastrar antes, na aba Signatários).
+- [ ] "Substituir" signatário: hoje é remover e adicionar, sem reassociar os campos do removido.
+- [ ] Zoom no editor de campos e alternativa sem arrastar (mover para cima, baixo, esquerda e direita).
+- [ ] Mensagens de erro junto ao campo, com o foco no primeiro erro (hoje aparecem em um texto no fim da tela).
+- [ ] Estado "Envio não confirmado" com contagem de convites registrados e pendentes (hoje o envio é atômico, então não há resultado parcial).
+- [ ] Mensagem de "assinatura já registrada em outro acesso", que recarrega o registro existente (hoje aparece a mensagem de erro).
+- [ ] Ao trocar o PDF com campos, o aviso de descarte é mostrado depois da troca, não antes de confirmar.
 
-### 4.3 Regras de negócio no envio (P1)
-- [ ] Impedir envio sem título.
-- [ ] Impedir envio sem **pelo menos um** signatário (hoje `insertFullDocumentFlow` aceita lista vazia).
-- [ ] Impedir o mesmo usuário duplicado como signatário no mesmo documento.
-- [ ] Exigir ao menos um campo por signatário (proposta do guia; não é regra explícita do enunciado).
-- [ ] Impedir campos sem signatário vinculado.
-- [ ] Tratamento de falha no envio com "Tentar novamente" sem criar solicitações duplicadas (idempotência; hoje há apenas a transação do Room).
+### 4.3 Acessibilidade e acabamento (P3)
+- [ ] Rótulos de conteúdo para leitores de tela nos campos e na área de assinatura.
+- [ ] Verificação de contraste e de aumento de fonte.
+- [ ] Miniaturas de páginas no passo Documento (hoje mostra só a primeira página em tamanho grande).
 
-### 4.4 Assinatura pelo signatário (P1)
-- [ ] Leitura do PDF completo pelo signatário, com destaque dos próprios campos.
-- [ ] Área de desenho para a assinatura (toque/dedo), botões Limpar e Confirmar.
-- [ ] Persistir a assinatura (imagem ou traço) e aplicá-la aos campos do signatário; hoje `signDocument` só altera status.
-- [ ] Gerar o documento final com as assinaturas aplicadas (necessário para "documento final, quando concluído").
-- [ ] Bloquear nova assinatura da mesma participação (ver bug 5.3).
+### 4.4 Dados e persistência (P3)
+- [ ] Migrações do Room reais. Hoje a troca de versão recria o banco (`fallbackToDestructiveMigration`).
+- [ ] Limpeza de arquivos órfãos em `filesDir` (PDFs de rascunhos descartados e PNGs de assinaturas de envios não concluídos).
+- [ ] Camada de API REST, prevista para a Sprint 2 (o contrato `DocumentRepository` já existe).
 
-### 4.5 Acompanhamento e histórico (P2)
-- [ ] Tela de acompanhamento: situação geral, progresso, situação individual, datas e horários.
-- [ ] Linha do tempo de criação, envio, cada assinatura e conclusão (queries prontas em `getDocumentTimeline`).
-- [ ] Acesso ao documento final quando concluído.
-
-### 4.6 Preservação e versionamento (P2)
-- [ ] Documento enviado não editável; alterações criam **nova versão e novo fluxo**. Hoje `DocumentEntity` não tem campo de versão nem referência ao documento original.
-
-### 4.7 Controle de acesso (P2)
-- [ ] Verificar, antes de listar ou abrir cada documento, se o usuário logado é criador (Admin) ou signatário vinculado. `getDocumentById` e a abertura do PDF ainda não fazem essa checagem (ver `docs/LOGIN-LOCAL.md`).
-
-### 4.8 Repositórios e persistência (P2)
-- [ ] Interface de usuário com métodos reais: o `domain/UserRepository` e o `RoomUserRepository` não são usados (ver 5.2).
-- [ ] Expor lista de signatários no `data.UserRepository` (hoje só existe no DAO).
-- [ ] Decidir e documentar a estratégia de migração do Room (`fallbackToDestructiveMigration()` apaga dados a cada mudança de versão).
-
-### 4.9 Testes e qualidade (P2)
-- [ ] Testes de DAO/repositório com Room em memória (criação de envio, assinatura, transições de status, validações de cadastro).
-- [ ] Testes de `UserRepository` (login, sessão, permissão do Admin, e-mail duplicado).
-- [ ] Remover ou substituir `ExampleUnitTest` e `ExampleInstrumentedTest` (templates sem valor).
-- [ ] Teste instrumentado do fluxo completo: Admin envia → signatário assina → status `COMPLETED`.
-
-### 4.10 Entregáveis (P1)
-- [ ] Gerar o APK de release/debug para entrega.
-- [ ] Criar o `.zip` do código-fonte (sem `build/`, `.gradle/` e `local.properties`).
-- [ ] Apresentação (PPT ou PDF) com nome do projeto, integrantes e RMs, problemática, solução, tecnologias, fluxo, diferenciais e link do vídeo; identidade visual da solução.
-- [ ] Vídeo demonstrativo de até 5 minutos com as principais funcionalidades.
-
-### 4.11 Build (P3)
-- [ ] `app/build.gradle.kts` referencia `proguard-rules.pro`, que **não existe** no projeto. Criar o arquivo ou remover a referência antes de gerar build de release.
+### 4.5 Build de release (P3)
+- [ ] Assinatura do APK de release (keystore). Só o APK de debug foi gerado.
+- [ ] Revisar as regras do ProGuard (`app/proguard-rules.pro` está vazio, com comentário) antes de habilitar a minificação.
 
 ---
 
