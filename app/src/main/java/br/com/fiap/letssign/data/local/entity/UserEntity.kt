@@ -9,6 +9,14 @@ enum class UserRole {
     SIGNATORY
 }
 
+/** Como o usuário prova a identidade no login. */
+enum class AuthMode {
+    /** E-mail + senha. */
+    PASSWORD,
+    /** E-mail + código de uso único gerado pelo app. */
+    EMAIL_CODE
+}
+
 @Entity(
     tableName = "users",
     indices = [Index(value = ["email"], unique = true)]
@@ -19,6 +27,12 @@ data class UserEntity(
     val fullName: String,
     val email: String,
     val phone: String,
-    val passwordHash: String,
-    val role: UserRole
+    /** Nulo quando o usuário entra apenas por código. */
+    val passwordHash: String?,
+    val role: UserRole,
+    val authMode: AuthMode = AuthMode.PASSWORD,
+    /** Hash do código de login pendente; nulo quando não há código ativo. */
+    val loginCodeHash: String? = null,
+    /** Instante (ms) em que o código pendente expira. */
+    val loginCodeExpiresAt: Long? = null
 )
