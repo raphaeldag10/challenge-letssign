@@ -12,6 +12,13 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface UserDao {
 
+    @androidx.room.Transaction
+    suspend fun createInitialAdmin(user: UserEntity): Long {
+        check(getUsersByRole(UserRole.ADMIN).isEmpty()) { "Administrador já configurado" }
+        require(user.role == UserRole.ADMIN)
+        return insertUser(user)
+    }
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertUser(user: UserEntity): Long
 
