@@ -59,9 +59,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // Room (Uncomment these if you want to use Room)
-    // implementation(libs.androidx.room.runtime)
-    // implementation(libs.androidx.room.ktx)
-    // ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // Glance (Widgets)
     implementation(libs.androidx.glance.appwidget)
