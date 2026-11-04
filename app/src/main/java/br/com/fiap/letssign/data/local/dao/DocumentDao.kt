@@ -34,7 +34,7 @@ interface DocumentDao {
 
     // --- Signatários do Documento ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSignatories(signatories: List<DocumentSignatoryEntity>)
+    suspend fun insertSignatories(signatories: List<DocumentSignatoryEntity>): List<Long>
 
     @Query("SELECT * FROM document_signatories WHERE documentId = :documentId")
     suspend fun getSignatoriesForDocument(documentId: Long): List<DocumentSignatoryEntity>
@@ -85,10 +85,24 @@ interface DocumentDao {
         fields: List<SignatureFieldEntity>
     ): Long {
         val docId = insertDocument(document)
-        val boundSignatories = signatories.map { it.copy(documentId = docId) }
-        insertSignatories(boundSignatories)
 
-        val boundFields = fields.map { it.copy(documentId = docId) }
+        // Um mesmo usuário não pode aparecer duas vezes no documento.
+        require(signatories.map { it.userId }.distinct().size == signatories.size) {
+            "Signatário repetido no documento"
+        }
+        val boundSignatories = signatories.map { it.copy(documentId = docId) }
+        val generatedSignatoryIds = insertSignatories(boundSignatories)
+
+        // Os IDs dos signatários só existem após a inserção. Os campos referenciam
+        // o signatário pelo userId (único no documento) e recebem o ID gerado.
+        val signatoryIdByUser = signatories.zip(generatedSignatoryIds)
+            .associate { (signatory, generatedId) -> signatory.userId to generatedId }
+        val boundFields = fields.map { field ->
+            val realSignatoryId = requireNotNull(signatoryIdByUser[field.signatoryId]) {
+                "Campo associado a um signatário que não faz parte do documento"
+            }
+            field.copy(documentId = docId, signatoryId = realSignatoryId)
+        }
         insertSignatureFields(boundFields)
 
         insertHistory(
