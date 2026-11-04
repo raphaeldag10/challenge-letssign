@@ -15,18 +15,17 @@ Este README foi gerado a partir do código local (branch `feature/bfcs-dados`) e
 
 | Área | Situação |
 | --- | --- |
-| Base do projeto Android (Compose, Room, KSP) | Pronta |
-| Persistência local (Room, 5 entidades, 2 DAOs) | Pronta, com bug no fluxo de envio (ver seção 5) |
-| Autenticação e perfis (Admin / Signatário) | Lógica pronta, sem telas |
-| Cadastro e edição de signatários | Lógica pronta, sem telas |
-| Assinatura de documento (status) | Lógica pronta; falta capturar e salvar a assinatura |
-| Telas do aplicativo | **Não implementadas** (`MainActivity` ainda é o template "Hello Android!") |
-| Manipulação de PDF (seleção, validação, páginas, campos) | **Não implementada** |
-| Testes | Apenas `PasswordHasherTest`; demais testes são templates |
+| Build (Gradle 9.6, AGP 9.5, Kotlin 2.2.10, KSP, Room 2.8.5) | Compila e gera APK de debug |
+| Persistência local (Room v2, entidades, DAOs, transações) | Pronta; bugs do envio corrigidos |
+| Autenticação e perfis (Admin / Signatário) | Pronta, com telas |
+| Cadastro e edição de signatários | Pronto, com telas |
+| Novo documento (PDF, pessoas, campos, revisão, envio) | Pronto, com telas (ver seção 11 sobre limites) |
+| Assinatura pelo signatário e PDF final | Pronta, com telas |
+| Acompanhamento, histórico e nova versão | Prontos, com telas |
+| Controle de acesso | Aplicado antes de abrir documento ou PDF |
+| Testes | 10 unitários passam; 5 instrumentados compilam, mas **não foram executados** (sem dispositivo) |
 
-Conclusão: a camada de dados está bem avançada, mas a experiência do usuário e o tratamento de PDF ainda não existem. Esses são os maiores itens pendentes.
-
----
+Não foi feito teste manual de ponta a ponta em aparelho. Veja a seção 11.
 
 ## 2. O que a atividade exige (Sprint 1)
 
@@ -223,6 +222,8 @@ Prioridade: **P1** = necessário para o fluxo mínimo da Sprint 1 funcionar; **P
 
 ## 5. Problemas encontrados no código atual
 
+> Os itens 1 a 6 foram corrigidos na execução do plano (seção 11). Mantidos aqui como registro.
+
 1. **Envio com campos quebra por chave estrangeira (bug, P1).** `DocumentDao.insertFullDocumentFlow` insere os signatários com `insertSignatories`, que não retorna os IDs gerados, e depois grava os campos com o `signatoryId` que veio do chamador sem reatribuí-lo. Como o Room ativa chaves estrangeiras, a inserção de campos com `signatoryId` inexistente deve falhar. **Status: corrigido em `DocumentDao.insertFullDocumentFlow`.** `insertSignatories` agora retorna `List<Long>`; cada campo referencia o signatário pelo `userId` (único no documento, validado) e recebe o ID gerado. Campos de signatário fora do documento e signatários repetidos geram erro. Ainda falta um teste instrumentado que comprove a correção (ver F6).
 
 2. **Duas interfaces `UserRepository` (P2).** Existe `domain/repository/UserRepository` (interface, com `authenticate(email, passwordHash)`) e `data/repository/UserRepository` (classe com login, cadastro e sessão). A implementação `RoomUserRepository` não é usada, e o `authenticate` compara o hash armazenado com um valor informado; como o PBKDF2 usa salt aleatório, essa comparação nunca daria certo. **Sugestão:** remover `RoomUserRepository` e a interface de domínio, ou fazer a classe `data` implementar a interface.
@@ -242,44 +243,42 @@ Prioridade: **P1** = necessário para o fluxo mínimo da Sprint 1 funcionar; **P
 
 ```
 challenge-letssign/
-├── app/
-│   ├── build.gradle.kts
-│   └── src/
-│       ├── main/
-│       │   ├── AndroidManifest.xml
-│       │   └── java/br/com/fiap/letssign/
-│       │       ├── MainActivity.kt                 # template, a ser substituído
-│       │       ├── data/
-│       │       │   ├── local/
-│       │       │   │   ├── converter/Converters.kt
-│       │       │   │   ├── dao/DocumentDao.kt, UserDao.kt
-│       │       │   │   └── entity/                 # 5 entidades Room + AppDatabase.kt
-│       │       │   └── repository/                 # UserRepository, RoomDocumentRepository,
-│       │       │                                   # RoomUserRepository, PasswordHasher
-│       │       ├── domain/repository/              # interfaces DocumentRepository, UserRepository
-│       │       └── ui/theme/                       # tema Compose
-│       └── test/                                   # PasswordHasherTest + templates
-├── design/                                         # escopo, guia de telas, pranchas
-├── docs/LOGIN-LOCAL.md                             # uso do login local
-└── gradle/libs.versions.toml                       # versões das dependências
+├── app/src/main/java/br/com/fiap/letssign/
+│   ├── LetsSignApp.kt, AppContainer.kt      # Application e injeção manual de dependências
+│   ├── MainActivity.kt                      # Entrada; chama AppRoot
+│   ├── data/
+│   │   ├── local/AppDatabase.kt             # Room v2
+│   │   ├── local/entity/                    # Entidades (usuário, documento, participante, campo, histórico)
+│   │   ├── local/dao/                       # UserDao, DocumentDao (transação de envio)
+│   │   ├── local/model/Projections.kt       # Resumos para listas e detalhes
+│   │   ├── file/PdfPages.kt                 # Validação e renderização de PDF (PdfRenderer)
+│   │   ├── file/FileStorage.kt              # Importação, assinatura PNG, PDF final
+│   │   └── repository/                      # UserRepository, RoomDocumentRepository, DocumentService
+│   ├── domain/repository/DocumentRepository.kt  # Contrato usado pela futura API REST
+│   └── ui/
+│       ├── AppRoot.kt                       # Rotas e navegação por pilha
+│       ├── auth/                            # Login e configuração inicial do Admin
+│       ├── admin/                           # Documentos, detalhe, signatários, conta
+│       ├── newdoc/                          # Assistente de envio e editor de campos
+│       ├── signatory/                       # Pendentes/assinados, leitura, assinatura
+│       └── common/                          # Componentes, overlay de campos, helpers
+├── app/src/test/                            # Testes unitários (JVM)
+├── app/src/androidTest/                     # Testes instrumentados (Room em memória)
+├── design/                                  # Escopo, guia de telas e pranchas
+└── docs/LOGIN-LOCAL.md                      # Login local
 ```
-
----
 
 ## 7. Como executar
 
-Requisitos: Android Studio recente, JDK 17 e Android SDK com API 37.
+Requisitos: Android Studio recente, JDK 17 e Android SDK com API 37 (o Gradle instala o que faltar).
 
 ```bash
-./gradlew assembleDebug      # gera o APK de debug
-./gradlew testDebugUnitTest  # roda os testes unitários
+./gradlew :app:assembleDebug        # gera app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:testDebugUnitTest    # testes unitários (JVM, sem emulador)
+./gradlew :app:connectedDebugAndroidTest   # testes instrumentados (requer dispositivo/emulador)
 ```
 
-O arquivo `local.properties` (caminho do SDK) é local e não deve ser versionado.
-
-Observação: o app ainda não tem telas de fluxo; a execução atual mostra apenas o template inicial.
-
----
+`local.properties` (caminho do SDK) é local e não deve ser versionado.
 
 ## 8. Fluxo local planejado para a demonstração
 
@@ -446,3 +445,44 @@ Se o tempo acabar, cortar nesta ordem e registrar o corte na apresentação: (1)
 - Admin acompanha o documento e vê o histórico.
 - Campos ficam dentro da página e são gravados em coordenadas relativas.
 - APK gerado, código zipado e apresentação com o link do vídeo.
+## 11. Execução do plano: estado atual
+
+O plano da seção 10 foi executado. Abaixo, o que foi feito em cada fase e o que ficou de fora.
+
+| Fase | Situação | Observações |
+| --- | --- | --- |
+| F0 Correções | Feito | Envio com campos corrigido; duplicidade de `UserRepository` removida; assinatura repetida bloqueada; `proguard-rules.pro` criado |
+| F1 Sessão e telas base | Feito | Setup do Admin, login, navegação por perfil, signatários, documentos com filtros, conta |
+| F2 Novo documento | Feito, com ressalvas | PDF validado com `PdfRenderer`; pessoas, funções, campos, revisão e envio; ver limites abaixo |
+| F3 Assinatura | Feito | Leitura com campos do próprio usuário, desenho, PNG salvo, status persistido |
+| F4 Acompanhamento e PDF final | Feito | Participantes, histórico, PDF final com assinaturas nas coordenadas normalizadas |
+| F5 Acesso e versões | Feito | Checagem de acesso antes de abrir documento/PDF; nova versão pré-preenchida |
+| F6 Testes | Parcial | Unitários passam; instrumentados compilam e não foram executados |
+| F7 Entregáveis | Parcial | APK de debug gerado; zip do código gerado; apresentação, vídeo e dados do grupo são do grupo |
+
+### Mudanças de build necessárias para compilar
+
+- `build.gradle.kts` raiz: removido o plugin `kotlin.android` (não existe no catálogo e o módulo usa `kotlin.compose`).
+- `gradle-wrapper.properties`: Gradle 9.6.0 (exigido pelo AGP 9.5).
+- `app/build.gradle.kts`: removido `kotlinOptions` (não suportado pelo AGP 9).
+- `gradle.properties`: `android.disallowKotlinSourceSets=false`, porque o KSP adiciona fontes geradas ao `kotlin.sourceSets`.
+- `libs.versions.toml`: KSP `2.2.10-2.0.2` (compatível com Kotlin 2.2.10) e Room `2.8.5` (a 2.6.1 falhava no KSP com `unexpected jvm signature V`).
+- `AndroidManifest.xml`: `LetsSignApp` e `FileProvider` para abrir PDFs no app de visualização.
+
+### Limites conhecidos (não implementados)
+
+- Na etapa **Pessoas** não há cadastro de signatário no meio do fluxo; é preciso cadastrar antes, na aba Signatários.
+- "Substituir" um signatário é feito por remover e adicionar outro. Os campos do removido são apagados (com confirmação), e não reassociados.
+- O editor de campos não tem zoom nem alternativa de teclado para mover campos (o guia pede as duas coisas por acessibilidade).
+- O reenvio após falha não consulta uma operação anterior: a gravação é uma transação, então uma falha não deixa dados parciais e pode ser repetida.
+- Migrações do Room são destrutivas (`fallbackToDestructiveMigration`); aceitável antes da entrega, não para produção.
+- Nenhum fluxo foi testado manualmente em aparelho ou emulador. A compilação e os testes unitários passaram; os instrumentados precisam de um dispositivo.
+
+### Como validar antes da entrega
+
+1. Instalar o APK de debug.
+2. Configurar o Admin, cadastrar dois signatários.
+3. Enviar um PDF real com título, dois signatários, um campo para cada um.
+4. Sair, entrar como um signatário, assinar. Confirmar "Parcialmente assinado".
+5. Entrar com o outro signatário e assinar. Confirmar "Concluído" e abrir o PDF final.
+6. Reiniciar o app e conferir que os dados continuam.

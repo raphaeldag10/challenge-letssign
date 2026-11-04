@@ -4,6 +4,10 @@ import br.com.fiap.letssign.data.local.dao.UserDao
 import br.com.fiap.letssign.data.local.entity.UserEntity
 import br.com.fiap.letssign.data.local.entity.UserRole
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -11,23 +15,36 @@ import java.util.Locale
 data class LoggedUser(val id: Long, val fullName: String, val email: String, val role: UserRole)
 
 class UserRepository(private val dao: UserDao, private val hasher: PasswordHasher = PasswordHasher()) {
-    private var session: LoggedUser? = null
-    val currentUser: LoggedUser? get() = session
+
+    private val _session = MutableStateFlow<LoggedUser?>(null)
+    val session: StateFlow<LoggedUser?> = _session.asStateFlow()
+    val currentUser: LoggedUser? get() = _session.value
+
+    suspend fun hasAdmin(): Boolean = withContext(Dispatchers.IO) {
+        dao.getUsersByRole(UserRole.ADMIN).isNotEmpty()
+    }
 
     suspend fun login(email: String, password: String): LoggedUser = withContext(Dispatchers.IO) {
         val user = dao.getUserByEmail(normalize(email))
         require(user != null && hasher.verify(password, user.passwordHash)) { "E-mail ou senha inválidos" }
-        LoggedUser(user.id, user.fullName, user.email, user.role).also { session = it }
+        LoggedUser(user.id, user.fullName, user.email, user.role).also { _session.value = it }
     }
 
-    fun logout() { session = null }
+    fun logout() {
+        _session.value = null
+    }
 
     // Usado uma única vez na configuração inicial; não cria senha padrão no código.
     suspend fun setupInitialAdmin(name: String, email: String, phone: String, password: String): Long =
         withContext(Dispatchers.IO) {
             validate(name, email, phone, password)
-            dao.createInitialAdmin(UserEntity(fullName = name.trim(), email = normalize(email),
-                phone = phone.trim(), passwordHash = hasher.hash(password), role = UserRole.ADMIN))
+            requireNotNull(password)
+            dao.createInitialAdmin(
+                UserEntity(
+                    fullName = name.trim(), email = normalize(email), phone = phone.trim(),
+                    passwordHash = hasher.hash(password), role = UserRole.ADMIN
+                )
+            )
         }
 
     suspend fun registerSignatory(name: String, email: String, phone: String, password: String): Long =
@@ -36,8 +53,12 @@ class UserRepository(private val dao: UserDao, private val hasher: PasswordHashe
             validate(name, email, phone, password)
             val normalized = normalize(email)
             require(dao.getUserByEmail(normalized) == null) { "E-mail já cadastrado" }
-            dao.insertUser(UserEntity(fullName = name.trim(), email = normalized, phone = phone.trim(),
-                passwordHash = hasher.hash(password), role = UserRole.SIGNATORY))
+            dao.insertUser(
+                UserEntity(
+                    fullName = name.trim(), email = normalized, phone = phone.trim(),
+                    passwordHash = hasher.hash(password), role = UserRole.SIGNATORY
+                )
+            )
         }
 
     suspend fun updateSignatory(id: Long, name: String, email: String, phone: String, password: String? = null) =
@@ -49,12 +70,22 @@ class UserRepository(private val dao: UserDao, private val hasher: PasswordHashe
             val normalized = normalize(email)
             val existing = dao.getUserByEmail(normalized)
             require(existing == null || existing.id == id) { "E-mail já cadastrado" }
-            dao.updateUser(user.copy(fullName = name.trim(), email = normalized, phone = phone.trim(),
-                passwordHash = password?.let(hasher::hash) ?: user.passwordHash))
+            dao.updateUser(
+                user.copy(
+                    fullName = name.trim(), email = normalized, phone = phone.trim(),
+                    passwordHash = password?.let(hasher::hash) ?: user.passwordHash
+                )
+            )
         }
 
+    fun observeSignatories(): Flow<List<UserEntity>> = dao.getAllSignatories()
+
+    suspend fun getSignatory(id: Long): UserEntity? = withContext(Dispatchers.IO) {
+        dao.getUserById(id)?.takeIf { it.role == UserRole.SIGNATORY }
+    }
+
     private fun requireAdmin() {
-        check(session?.role == UserRole.ADMIN) { "Apenas o administrador pode gerenciar signatários" }
+        check(_session.value?.role == UserRole.ADMIN) { "Apenas o administrador pode gerenciar signatários" }
     }
 
     private fun normalize(email: String) = email.trim().lowercase(Locale.ROOT)

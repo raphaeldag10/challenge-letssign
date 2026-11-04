@@ -36,6 +36,7 @@ data class DocumentSignatoryEntity(
     val userId: Long,
     val roleType: SignatoryRoleType,
     val hasSigned: Boolean = false,
-    val signedAt: Long? = null
+    val signedAt: Long? = null,
+    /** Caminho do PNG da assinatura desenhada pelo participante. */
+    val signaturePath: String? = null
 )
-
