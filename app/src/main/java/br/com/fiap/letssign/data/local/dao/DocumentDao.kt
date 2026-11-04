@@ -9,30 +9,52 @@ import androidx.room.Update
 import br.com.fiap.letssign.data.local.entity.DocumentEntity
 import br.com.fiap.letssign.data.local.entity.DocumentHistoryEntity
 import br.com.fiap.letssign.data.local.entity.DocumentSignatoryEntity
-import br.com.fiap.letssign.data.local.entity.DocumentStatus
 import br.com.fiap.letssign.data.local.entity.SignatureFieldEntity
+import br.com.fiap.letssign.data.local.model.DocumentSummary
+import br.com.fiap.letssign.data.local.model.SignatoryDetail
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DocumentDao {
 
-    // --- Gestão do Documento ---
+    // --- Documento ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDocument(document: DocumentEntity): Long
 
     @Update
     suspend fun updateDocument(document: DocumentEntity)
 
-    @Query("SELECT * FROM documents ORDER BY createdAt DESC")
-    fun getAllDocuments(): Flow<List<DocumentEntity>>
-
     @Query("SELECT * FROM documents WHERE id = :id LIMIT 1")
     suspend fun getDocumentById(id: Long): DocumentEntity?
 
-    @Query("SELECT * FROM documents WHERE status = :status ORDER BY createdAt DESC")
-    fun getDocumentsByStatus(status: DocumentStatus): Flow<List<DocumentEntity>>
+    @Query("UPDATE documents SET finalFilePath = :path WHERE id = :id")
+    suspend fun setFinalFilePath(id: Long, path: String)
 
-    // --- Signatários do Documento ---
+    // Lista do Admin: todos os documentos com progresso de assinaturas.
+    @Query("""
+        SELECT d.id AS id, d.title AS title, d.status AS status, d.createdAt AS createdAt,
+               d.versionNumber AS versionNumber,
+               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id) AS total,
+               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed
+        FROM documents d
+        ORDER BY d.createdAt DESC
+    """)
+    fun observeAllSummaries(): Flow<List<DocumentSummary>>
+
+    // Lista do Signatário: documentos em que ele é participante, pendentes ou assinados por ele.
+    @Query("""
+        SELECT d.id AS id, d.title AS title, d.status AS status, d.createdAt AS createdAt,
+               d.versionNumber AS versionNumber,
+               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id) AS total,
+               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed
+        FROM documents d
+        INNER JOIN document_signatories me ON me.documentId = d.id
+        WHERE me.userId = :userId AND me.hasSigned = :signed
+        ORDER BY d.createdAt DESC
+    """)
+    fun observeSummariesForSignatory(userId: Long, signed: Boolean): Flow<List<DocumentSummary>>
+
+    // --- Participantes do documento ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSignatories(signatories: List<DocumentSignatoryEntity>): List<Long>
 
@@ -42,42 +64,38 @@ interface DocumentDao {
     @Query("SELECT * FROM document_signatories WHERE documentId = :documentId AND userId = :userId LIMIT 1")
     suspend fun getSignatoryRecord(documentId: Long, userId: Long): DocumentSignatoryEntity?
 
+    @Query("""
+        SELECT u.id AS userId, u.fullName AS fullName, u.email AS email,
+               ds.roleType AS roleType, ds.hasSigned AS hasSigned, ds.signedAt AS signedAt
+        FROM document_signatories ds
+        INNER JOIN users u ON u.id = ds.userId
+        WHERE ds.documentId = :documentId
+        ORDER BY u.fullName ASC
+    """)
+    fun observeSignatoryDetails(documentId: Long): Flow<List<SignatoryDetail>>
+
+    // Acesso: o usuário é participante do documento (criador é checado no repositório).
+    @Query("SELECT COUNT(*) FROM document_signatories WHERE documentId = :documentId AND userId = :userId")
+    suspend fun countSignatoryLink(documentId: Long, userId: Long): Int
+
     @Update
     suspend fun updateSignatory(signatory: DocumentSignatoryEntity)
 
-    // Documentos pendentes para um signatário específico
-    @Query("""
-        SELECT d.* FROM documents d
-        INNER JOIN document_signatories ds ON d.id = ds.documentId
-        WHERE ds.userId = :userId AND ds.hasSigned = 0
-        ORDER BY d.createdAt DESC
-    """)
-    fun getPendingDocumentsForSignatory(userId: Long): Flow<List<DocumentEntity>>
-
-    // Documentos já assinados por um signatário específico
-    @Query("""
-        SELECT d.* FROM documents d
-        INNER JOIN document_signatories ds ON d.id = ds.documentId
-        WHERE ds.userId = :userId AND ds.hasSigned = 1
-        ORDER BY d.createdAt DESC
-    """)
-    fun getSignedDocumentsForSignatory(userId: Long): Flow<List<DocumentEntity>>
-
-    // --- Campos de Assinatura ---
+    // --- Campos de assinatura ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSignatureFields(fields: List<SignatureFieldEntity>)
 
     @Query("SELECT * FROM signature_fields WHERE documentId = :documentId")
     suspend fun getSignatureFieldsForDocument(documentId: Long): List<SignatureFieldEntity>
 
-    // --- Linha do Tempo e Histórico ---
+    // --- Linha do tempo ---
     @Insert
     suspend fun insertHistory(history: DocumentHistoryEntity)
 
     @Query("SELECT * FROM document_history WHERE documentId = :documentId ORDER BY timestamp ASC")
-    fun getHistoryByDocument(documentId: Long): Flow<List<DocumentHistoryEntity>>
+    fun observeHistory(documentId: Long): Flow<List<DocumentHistoryEntity>>
 
-    // --- Transação Completa de Envio de Documento ---
+    // --- Transação completa de envio ---
     @Transaction
     suspend fun insertFullDocumentFlow(
         document: DocumentEntity,

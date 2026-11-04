@@ -8,7 +8,11 @@ import androidx.room.TypeConverters
 import br.com.fiap.letssign.data.local.converter.Converters
 import br.com.fiap.letssign.data.local.dao.DocumentDao
 import br.com.fiap.letssign.data.local.dao.UserDao
-import br.com.fiap.letssign.data.local.entity.*
+import br.com.fiap.letssign.data.local.entity.DocumentEntity
+import br.com.fiap.letssign.data.local.entity.DocumentHistoryEntity
+import br.com.fiap.letssign.data.local.entity.DocumentSignatoryEntity
+import br.com.fiap.letssign.data.local.entity.SignatureFieldEntity
+import br.com.fiap.letssign.data.local.entity.UserEntity
 
 @Database(
     entities = [
@@ -18,7 +22,7 @@ import br.com.fiap.letssign.data.local.entity.*
         SignatureFieldEntity::class,
         DocumentHistoryEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -38,6 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "letssign_database"
                 )
+                    // Antes da entrega não há dados reais; a versão 2 recria o banco.
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

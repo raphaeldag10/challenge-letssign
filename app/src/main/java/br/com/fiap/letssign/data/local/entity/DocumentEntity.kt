@@ -11,6 +11,10 @@ enum class DocumentStatus {
     COMPLETED
 }
 
+/**
+ * Documento enviado para assinatura. Após o envio ele não é editado: alterações
+ * criam uma nova versão (versionNumber + 1) apontando para o original (parentDocumentId).
+ */
 @Entity(
     tableName = "documents",
     foreignKeys = [
@@ -30,5 +34,9 @@ data class DocumentEntity(
     val filePath: String,
     val status: DocumentStatus = DocumentStatus.PENDING,
     val createdById: Long,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val message: String? = null,
+    val versionNumber: Int = 1,
+    val parentDocumentId: Long? = null,
+    val finalFilePath: String? = null
 )
