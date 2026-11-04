@@ -22,7 +22,7 @@ import br.com.fiap.letssign.data.local.entity.UserEntity
         SignatureFieldEntity::class,
         DocumentHistoryEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -42,7 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "letssign_database"
                 )
-                    // Antes da entrega não há dados reais; a versão 2 recria o banco.
+                    // Antes da entrega não há dados reais; as versões 2 e 3 recriam o banco.
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -14,20 +14,24 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.fiap.letssign.AppContainer
+import br.com.fiap.letssign.data.local.entity.AuthMode
 import br.com.fiap.letssign.data.local.entity.UserEntity
 import br.com.fiap.letssign.ui.common.EmptyState
 import br.com.fiap.letssign.ui.common.ErrorText
@@ -105,6 +109,7 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
     var name by mutableStateOf("")
     var email by mutableStateOf("")
     var phone by mutableStateOf("")
+    var authMode by mutableStateOf(AuthMode.PASSWORD)
     var password by mutableStateOf("")
     var error by mutableStateOf<String?>(null)
     var busy by mutableStateOf(false)
@@ -119,6 +124,7 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
                     name = it.fullName
                     email = it.email
                     phone = it.phone
+                    authMode = it.authMode
                 }
                 loaded = true
             }
@@ -128,17 +134,13 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
     fun save(onDone: () -> Unit) {
         if (busy) return
         error = null
-        if (signatoryId == null && password.isBlank()) {
-            error = "Informe a senha do signatário."
-            return
-        }
         busy = true
         viewModelScope.launch {
             try {
                 if (signatoryId == null) {
-                    users.registerSignatory(name, email, phone, password)
+                    users.registerSignatory(name, email, phone, authMode, password.ifBlank { null })
                 } else {
-                    users.updateSignatory(signatoryId, name, email, phone, password.ifBlank { null })
+                    users.updateSignatory(signatoryId, name, email, phone, authMode, password.ifBlank { null })
                 }
                 onDone()
             } catch (e: IllegalArgumentException) {
@@ -165,18 +167,41 @@ fun SignatoryFormScreen(container: AppContainer, signatoryId: Long?, onDone: () 
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(vm.name, { vm.name = it }, label = { Text("Nome completo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(vm.email, { vm.email = it }, label = { Text("E-mail (login)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(vm.phone, { vm.phone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(
-                value = vm.password,
-                onValueChange = { vm.password = it },
-                label = { Text(if (vm.isEditing) "Nova senha (vazio mantém a atual)" else "Senha (mínimo 8 caracteres)") },
-                visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedButton(onClick = { showPassword = !showPassword }) {
-                Text(if (showPassword) "Ocultar senha" else "Mostrar senha")
+            OutlinedTextField(vm.email, { vm.email = it }, label = { Text("E-mail") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(vm.phone, { vm.phone = it }, label = { Text("Telefone (opcional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+
+            Text("Modo de autenticação", style = MaterialTheme.typography.titleSmall)
+            AuthMode.entries.forEach { mode ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { vm.authMode = mode }
+                ) {
+                    RadioButton(selected = vm.authMode == mode, onClick = { vm.authMode = mode })
+                    Column {
+                        Text(if (mode == AuthMode.PASSWORD) "Senha" else "Código por e-mail")
+                        Text(
+                            if (mode == AuthMode.PASSWORD) "Entra com e-mail e senha."
+                            else "Entra com e-mail e um código de uso único (10 min).",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            if (vm.authMode == AuthMode.PASSWORD) {
+                OutlinedTextField(
+                    value = vm.password,
+                    onValueChange = { vm.password = it },
+                    label = { Text(if (vm.isEditing) "Nova senha (vazio mantém a atual)" else "Senha (mínimo 8 caracteres)") },
+                    visualTransformation = if (showPassword) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedButton(onClick = { showPassword = !showPassword }) {
+                    Text(if (showPassword) "Ocultar senha" else "Mostrar senha")
+                }
             }
             ErrorText(vm.error)
             Button(

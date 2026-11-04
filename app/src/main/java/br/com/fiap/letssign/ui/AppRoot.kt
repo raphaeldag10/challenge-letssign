@@ -4,6 +4,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -19,11 +25,13 @@ import br.com.fiap.letssign.AppContainer
 import br.com.fiap.letssign.data.local.entity.UserRole
 import br.com.fiap.letssign.data.repository.LoggedUser
 import br.com.fiap.letssign.ui.admin.AccountScreen
+import br.com.fiap.letssign.ui.admin.AdminHomeScreen
 import br.com.fiap.letssign.ui.admin.DocumentDetailScreen
 import br.com.fiap.letssign.ui.admin.DocumentsScreen
 import br.com.fiap.letssign.ui.admin.SignatoryFormScreen
 import br.com.fiap.letssign.ui.admin.SignatoriesScreen
 import br.com.fiap.letssign.ui.auth.LoginScreen
+import br.com.fiap.letssign.ui.auth.ProfileChoiceScreen
 import br.com.fiap.letssign.ui.auth.SetupScreen
 import br.com.fiap.letssign.ui.common.CenteredLoading
 import br.com.fiap.letssign.ui.newdoc.NewDocumentScreen
@@ -36,6 +44,8 @@ sealed interface Route {
     data object Loading : Route
     data object Setup : Route
     data object Login : Route
+    data object ProfileChoice : Route
+    data object AdminHome : Route
     data object AdminDocuments : Route
     data object AdminSignatories : Route
     data object Account : Route
@@ -48,7 +58,7 @@ sealed interface Route {
 }
 
 fun homeFor(user: LoggedUser): Route =
-    if (user.role == UserRole.ADMIN) Route.AdminDocuments else Route.SignatoryHome
+    if (user.role == UserRole.ADMIN) Route.AdminHome else Route.SignatoryHome
 
 /** Pilha simples de navegação. Fica no Composable raiz, então sobrevive às recomposições. */
 class AppNavigator {
@@ -97,7 +107,11 @@ fun AppRoot(container: AppContainer) {
     when (val route = nav.current) {
         Route.Loading -> CenteredLoading()
         Route.Setup -> SetupScreen(container) { nav.replaceAll(Route.Login) }
-        Route.Login -> LoginScreen(container) { nav.replaceAll(homeFor(it)) }
+        Route.Login -> LoginScreen(
+            container = container,
+            onSetup = { nav.replaceAll(Route.Setup) },
+            onLoggedIn = { nav.replaceAll(Route.ProfileChoice) }
+        )
         else -> {
             val user = session
             if (user == null) {
@@ -120,7 +134,12 @@ private fun AuthenticatedRoute(
 ) {
     val isAdmin = user.role == UserRole.ADMIN
     when (route) {
-        Route.AdminDocuments, Route.AdminSignatories -> AdminShell(route, nav, container, user, logout)
+        Route.AdminHome, Route.AdminDocuments, Route.AdminSignatories -> AdminShell(route, nav, container, user, logout)
+        Route.ProfileChoice -> ProfileChoiceScreen(
+            user = user,
+            onContinue = { nav.replaceAll(homeFor(user)) },
+            onBack = logout
+        )
         Route.Account -> if (isAdmin) {
             AdminShell(route, nav, container, user, logout)
         } else {
@@ -180,18 +199,19 @@ private fun AdminShell(
     logout: () -> Unit
 ) {
     val tabs = listOf(
-        Route.AdminDocuments to "Documentos",
-        Route.AdminSignatories to "Signatários",
-        Route.Account to "Conta"
+        Triple(Route.AdminHome, "Início", Icons.Filled.Home),
+        Triple(Route.AdminDocuments, "Documentos", Icons.Filled.List),
+        Triple(Route.AdminSignatories, "Signatários", Icons.Filled.Person),
+        Triple(Route.Account, "Perfil", Icons.Filled.AccountCircle)
     )
     Scaffold(
         bottomBar = {
             NavigationBar {
-                tabs.forEach { (tab, label) ->
+                tabs.forEach { (tab, label, icon) ->
                     NavigationBarItem(
                         selected = route == tab,
                         onClick = { if (route != tab) nav.replaceAll(tab) },
-                        icon = {},
+                        icon = { Icon(icon, contentDescription = null) },
                         label = { Text(label) }
                     )
                 }
@@ -206,6 +226,14 @@ private fun AdminShell(
                     onNew = { nav.push(Route.SignatoryForm(null)) }
                 )
                 Route.Account -> AccountScreen(user, onBack = null, onLogout = logout)
+                Route.AdminHome -> AdminHomeScreen(
+                    container = container,
+                    user = user,
+                    onSendPdf = { nav.push(Route.NewDocument(null, System.nanoTime())) },
+                    onSignatories = { nav.replaceAll(Route.AdminSignatories) },
+                    onDocuments = { nav.replaceAll(Route.AdminDocuments) },
+                    onAccount = { nav.replaceAll(Route.Account) }
+                )
                 else -> DocumentsScreen(
                     container = container,
                     onOpen = { nav.push(Route.DocumentDetail(it)) },
