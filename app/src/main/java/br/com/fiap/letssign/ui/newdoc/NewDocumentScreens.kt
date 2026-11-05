@@ -6,6 +6,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
@@ -123,30 +126,55 @@ fun NewDocumentScreen(
 
 @Composable
 private fun DocumentProgress(step: Int) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    val primary = MaterialTheme.colorScheme.primary
+    val outline = MaterialTheme.colorScheme.outlineVariant
+    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp)) {
+        Canvas(Modifier.matchParentSize()) {
+            val cell = size.width / STEP_TITLES.size
+            val centerY = 18.dp.toPx()
+            for (index in 0 until STEP_TITLES.lastIndex) {
+                drawLine(
+                    color = if (index < step) primary else outline,
+                    start = Offset(cell * (index + 0.5f) + 23.dp.toPx(), centerY),
+                    end = Offset(cell * (index + 1.5f) - 23.dp.toPx(), centerY),
+                    strokeWidth = 2.dp.toPx(),
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             STEP_TITLES.forEachIndexed { index, label ->
-                if (index > 0) HorizontalDivider(Modifier.weight(0.3f),
-                    color = if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                val current = index == step
+                val completed = index < step
+                Column(
+                    Modifier.weight(1f).semantics {
+                        stateDescription = if (current) "Etapa atual" else if (completed) "Concluída" else "Pendente"
+                    },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Surface(
+                        modifier = Modifier.size(36.dp),
                         shape = CircleShape,
-                        color = if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(1.dp, if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+                        color = when {
+                            current -> primary
+                            completed -> MaterialTheme.colorScheme.primaryContainer
+                            else -> MaterialTheme.colorScheme.surface
+                        },
+                        border = if (current || completed) null else BorderStroke(1.dp, outline)
                     ) {
-                        Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                            if (index < step) Icon(Icons.Filled.Check, null, Modifier.size(16.dp))
-                            else Text("${index + 1}", style = MaterialTheme.typography.labelMedium)
+                        Box(contentAlignment = Alignment.Center) {
+                            if (completed) Icon(Icons.Filled.Check, null, Modifier.size(18.dp), tint = primary)
+                            else Text("${index + 1}", style = MaterialTheme.typography.labelLarge,
+                                color = if (current) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Text(label, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.labelSmall,
-                        color = if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(label, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
+                        fontWeight = if (current) FontWeight.Bold else FontWeight.Medium,
+                        color = if (current || completed) primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        Text("Passo ${step + 1} de ${STEP_TITLES.size}", style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -168,16 +196,29 @@ private fun DocumentStep(container: AppContainer, vm: NewDocumentViewModel) {
             Column(Modifier.fillMaxWidth().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                    Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.AutoMirrored.Filled.List, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text("PDF", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                if (vm.pdfPath != null) {
+                    Box(Modifier.width(120.dp)) {
+                        PdfPageImage(
+                            pages = vm.pages, pageIndex = 0, aspect = vm.aspect(0),
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .border(1.dp, outline, RoundedCornerShape(8.dp))
+                        )
                     }
+                    Text(vm.pdfName, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
+                    Text("${vm.pageCount} página(s) · PDF selecionado",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.AutoMirrored.Filled.List, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                            Text("PDF", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Text("Importar documento (PDF)", fontWeight = FontWeight.SemiBold)
+                    Text("Selecione no seu dispositivo o documento que deseja enviar para assinatura.",
+                        textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("Importar documento (PDF)", fontWeight = FontWeight.SemiBold)
-                Text("Selecione no seu dispositivo o documento que deseja enviar para assinatura.",
-                    textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton(onClick = { picker.launch(arrayOf("application/pdf")) },
                     enabled = !vm.loadingPdf, shape = RoundedCornerShape(10.dp)) {
                     Icon(Icons.Filled.Add, null, Modifier.size(20.dp))
@@ -193,11 +234,7 @@ private fun DocumentStep(container: AppContainer, vm: NewDocumentViewModel) {
                 singleLine = true, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth())
         }
         vm.notice?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        if (vm.pdfPath != null) {
-            Text("${vm.pdfName} · ${vm.pageCount} página(s)", style = MaterialTheme.typography.labelLarge)
-            PdfPageImage(pages = vm.pages, pageIndex = 0, aspect = vm.aspect(0),
-                modifier = Modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, outline, RoundedCornerShape(12.dp)))
-        }
+
     }
 }
 
