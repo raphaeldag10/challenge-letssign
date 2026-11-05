@@ -149,6 +149,7 @@ private fun AuthenticatedRoute(
             container = container,
             user = user,
             onOpen = { nav.push(Route.DocumentView(it)) },
+            onSign = { nav.push(Route.SignDocument(it)) },
             onAccount = { nav.push(Route.Account) }
         )
         is Route.DocumentView -> SignatoryDocumentScreen(

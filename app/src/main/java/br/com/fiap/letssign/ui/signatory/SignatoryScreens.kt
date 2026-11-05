@@ -2,6 +2,45 @@ package br.com.fiap.letssign.ui.signatory
 
 import android.graphics.PointF
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import br.com.fiap.letssign.R
+import br.com.fiap.letssign.ui.common.BrandLogo
+import br.com.fiap.letssign.ui.common.firstNameOf
+import br.com.fiap.letssign.ui.common.initialsOf
+import br.com.fiap.letssign.ui.theme.BrandBlue
+import br.com.fiap.letssign.ui.theme.BrandBlueSoft
+import java.text.SimpleDateFormat
+import java.util.Locale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,8 +60,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,7 +100,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import br.com.fiap.letssign.ui.admin.DocumentRow
 
 class SignatoryHomeViewModel(container: AppContainer, userId: Long) : ViewModel() {
     var pending by mutableStateOf<List<DocumentSummary>>(emptyList())
@@ -76,31 +112,216 @@ class SignatoryHomeViewModel(container: AppContainer, userId: Long) : ViewModel(
     }
 }
 
+private val SignGreen = Color(0xFF22A447)
+private val PendingBg = Color(0xFFFFF4D6)
+private val PendingFg = Color(0xFF9A6700)
+private val SignedBg = Color(0xFFE3F5E8)
+private val PdfRed = Color(0xFFE5483D)
+private val CardShape = RoundedCornerShape(16.dp)
+private val ButtonShape = RoundedCornerShape(12.dp)
+private val receivedFormat = SimpleDateFormat("dd MMM yyyy", Locale.forLanguageTag("pt-BR"))
+
 @Composable
-fun SignatoryHomeScreen(container: AppContainer, user: LoggedUser, onOpen: (Long) -> Unit, onAccount: () -> Unit) {
+fun SignatoryHomeScreen(
+    container: AppContainer,
+    user: LoggedUser,
+    onOpen: (Long) -> Unit,
+    onSign: (Long) -> Unit,
+    onAccount: () -> Unit
+) {
     val vm = appViewModel(key = "home-${user.id}") { SignatoryHomeViewModel(container, user.id) }
-    var tab by remember { mutableStateOf(0) }
-    ScreenScaffold(title = "Documentos recebidos") { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                OutlinedButton(onClick = onAccount) { Text("Conta") }
-            }
-            TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Pendentes") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Assinados") })
-            }
-            val list = if (tab == 0) vm.pending else vm.signed
-            if (list.isEmpty()) {
-                EmptyState(
-                    if (tab == 0) "Tudo em dia. Nenhum documento aguardando sua assinatura."
-                    else "Você ainda não assinou nenhum documento."
+    Scaffold(
+        topBar = { HomeTopBar(user, onAccount) },
+        bottomBar = {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                NavigationBarItem(
+                    selected = true,
+                    onClick = {},
+                    icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
+                    label = { Text("Documentos") }
                 )
-            } else {
-                LazyColumn {
-                    items(list, key = { it.id }) { doc -> DocumentRow(doc, onClick = { onOpen(doc.id) }) }
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onAccount,
+                    icon = { Icon(Icons.Outlined.Person, contentDescription = null) },
+                    label = { Text("Perfil") }
+                )
+            }
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item { Greeting(user.fullName, vm.pending.size) }
+            items(vm.pending, key = { "p-${it.id}" }) { doc ->
+                SignatoryDocumentCard(doc, pending = true, onSign = { onSign(doc.id) }, onOpen = { onOpen(doc.id) })
+            }
+            if (vm.signed.isNotEmpty()) {
+                item {
+                    Text(
+                        "Assinados",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+                items(vm.signed, key = { "s-${it.id}" }) { doc ->
+                    SignatoryDocumentCard(doc, pending = false, onSign = {}, onOpen = { onOpen(doc.id) })
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HomeTopBar(user: LoggedUser, onAccount: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
+    ) {
+        BrandLogo(iconSize = 32)
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = {}) {
+            Icon(Icons.Outlined.Notifications, contentDescription = "Notificações")
+        }
+        Spacer(Modifier.width(4.dp))
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(BrandBlueSoft)
+                .clickable(onClick = onAccount)
+        ) {
+            Text(initialsOf(user.fullName), color = BrandBlue, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun Greeting(fullName: String, pendingCount: Int) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Olá, ${firstNameOf(fullName)}! 👋",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                when (pendingCount) {
+                    0 -> "Tudo em dia. Nenhum documento aguardando sua assinatura."
+                    1 -> "Você tem 1 documento pendente de assinatura."
+                    else -> "Você tem $pendingCount documentos pendentes de assinatura."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(start = 12.dp).size(88.dp).background(BrandBlueSoft, CircleShape)
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_letssign_logo),
+                contentDescription = null,
+                modifier = Modifier.size(52.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SignatoryDocumentCard(doc: DocumentSummary, pending: Boolean, onSign: () -> Unit, onOpen: () -> Unit) {
+    OutlinedCard(
+        shape = CardShape,
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(width = 30.dp, height = 34.dp).background(PdfRed, RoundedCornerShape(6.dp))
+                ) {
+                    Text("PDF", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    doc.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                StatusChip(pending)
+            }
+            InfoLine(Icons.Outlined.Person, "Enviado por: ", doc.senderName ?: "Administrador")
+            InfoLine(Icons.Outlined.DateRange, "Recebido em: ", receivedFormat.format(doc.createdAt).replace(".", ""))
+            if (pending) {
+                Button(
+                    onClick = onSign,
+                    shape = ButtonShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = SignGreen, contentColor = Color.White),
+                    contentPadding = PaddingValues(vertical = 14.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                ) {
+                    Icon(Icons.Filled.Create, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Assinar agora", fontWeight = FontWeight.SemiBold)
+                }
+            }
+            OutlinedButton(
+                onClick = onOpen,
+                shape = ButtonShape,
+                contentPadding = PaddingValues(vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Ver documento", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusChip(pending: Boolean) {
+    Text(
+        if (pending) "Pendente" else "Assinado",
+        color = if (pending) PendingFg else SignGreen,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .background(if (pending) PendingBg else SignedBg, RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    )
+}
+
+@Composable
+private fun InfoLine(icon: ImageVector, label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            buildAnnotatedString {
+                append(label)
+                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)) {
+                    append(value)
+                }
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
