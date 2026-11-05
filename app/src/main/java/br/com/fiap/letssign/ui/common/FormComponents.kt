@@ -19,6 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import br.com.fiap.letssign.data.repository.Cpf
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -71,6 +75,30 @@ fun FormScaffold(
         },
         bottomBar = bottomBar
     ) { content(it) }
+}
+
+/**
+ * Máscara 000.000.000-00 só para exibição. O valor guardado são apenas os dígitos, então o cursor
+ * e a digitação acontecem sobre os dígitos e não são reescritos a cada tecla.
+ */
+object CpfVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = Cpf.digitsOf(text.text).take(Cpf.LENGTH)
+        val formatted = Cpf.format(digits)
+        // Posição, no texto formatado, de cada dígito.
+        val digitIndices = formatted.indices.filter { formatted[it].isDigit() }
+        val mapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = when {
+                offset <= 0 -> 0
+                offset > digitIndices.size -> formatted.length
+                else -> digitIndices[offset - 1] + 1
+            }
+
+            override fun transformedToOriginal(offset: Int): Int =
+                formatted.take(offset.coerceIn(0, formatted.length)).count { it.isDigit() }
+        }
+        return TransformedText(AnnotatedString(formatted), mapping)
+    }
 }
 
 @Composable
