@@ -57,6 +57,7 @@ import br.com.fiap.letssign.data.local.model.DocumentSummary
 import br.com.fiap.letssign.data.repository.LoggedUser
 import br.com.fiap.letssign.ui.theme.Tone
 import br.com.fiap.letssign.ui.theme.toneColors
+import br.com.fiap.letssign.ui.common.BrandTopBar
 import br.com.fiap.letssign.ui.common.EmptyState
 import br.com.fiap.letssign.ui.common.appViewModel
 import br.com.fiap.letssign.ui.common.initialsOf
@@ -70,8 +71,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 // Paleta da tela de documentos (roxo), separada da cor azul da marca usada nas telas de acesso.
-private val TopBarPurple = Color(0xFF3B1F7A)
-private val Purple = Color(0xFF6D3FD1)
 private val PdfRed = Color(0xFFE03131)
 
 
@@ -180,7 +179,7 @@ fun DocumentsContent(
     onAccount: () -> Unit
 ) {
     Column(Modifier.fillMaxSize()) {
-        DocumentsTopBar(initials = initials, onAccount = onAccount)
+        BrandTopBar(initials = initials, onAccount = onAccount)
 
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -190,7 +189,6 @@ fun DocumentsContent(
             Button(
                 onClick = onNew,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Purple)
             ) { Text("+ Novo documento") }
             Text(
                 "${counts.awaiting} aguardando · ${counts.partial} parciais · ${counts.completed} concluídos",
@@ -221,44 +219,6 @@ fun DocumentsContent(
 }
 
 @Composable
-private fun DocumentsTopBar(initials: String, onAccount: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(TopBarPurple)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color.White)
-            Text("LetsSign", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.18f))
-                    .clickable(onClick = onAccount),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(initials, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(horizontal = 10.dp, vertical = 3.dp)
-            ) {
-                Text("Admin", color = TopBarPurple, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-            }
-        }
-    }
-}
-
-@Composable
 private fun SearchField(query: String, onQuery: (String) -> Unit) {
     OutlinedTextField(
         value = query,
@@ -283,8 +243,8 @@ private fun FilterChips(selected: DocumentFilter, onSelect: (DocumentFilter) -> 
                 onClick = { onSelect(f) },
                 label = { Text(f.label) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Purple,
-                    selectedLabelColor = Color.White
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -339,7 +299,7 @@ private fun DocumentCard(item: DocumentListItem, onClick: () -> Unit) {
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
-                color = Purple,
+                color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
@@ -355,7 +315,7 @@ private fun PdfBadge() {
             .background(PdfRed.copy(alpha = 0.12f)),
         contentAlignment = Alignment.Center
     ) {
-        Text("PDF", color = PdfRed, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        Text("PDF", color = PdfRed, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -369,7 +329,7 @@ private fun StatusChip(status: DocumentStatus) {
     Box(
         Modifier.clip(RoundedCornerShape(50)).background(bg).padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
-        Text(statusLabel(status), color = fg, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        Text(statusLabel(status), color = fg, style = MaterialTheme.typography.labelMedium)
     }
 }
 

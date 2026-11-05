@@ -44,12 +44,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import br.com.fiap.letssign.AppContainer
+import br.com.fiap.letssign.data.local.entity.SignatureMethod
 import br.com.fiap.letssign.data.local.entity.SignatoryRoleType
 import br.com.fiap.letssign.data.local.entity.UserEntity
+import br.com.fiap.letssign.ui.common.FormScaffold
 import br.com.fiap.letssign.ui.common.EmptyState
 import br.com.fiap.letssign.ui.common.ErrorText
 import br.com.fiap.letssign.ui.common.PdfPageImage
-import br.com.fiap.letssign.ui.common.ScreenScaffold
 import br.com.fiap.letssign.ui.common.appViewModel
 import br.com.fiap.letssign.ui.common.openPdf
 import br.com.fiap.letssign.ui.common.signatoryColor
@@ -65,7 +66,7 @@ fun NewDocumentScreen(
 ) {
     val vm = appViewModel(key = viewModelKey) { NewDocumentViewModel(container, versionOfId) }
     val title = if (vm.parentId != null) "Nova versão ${vm.versionNumber}" else "Novo documento"
-    ScreenScaffold(
+    FormScaffold(
         title = title,
         onBack = { if (vm.step == 0) onCancel() else vm.back() }
     ) { padding ->
@@ -357,6 +358,24 @@ private fun ReviewStep(container: AppContainer, vm: NewDocumentViewModel, onSent
             )
         }
         HorizontalDivider()
+        Text("Como os signatários podem assinar", style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SignatureMethod.entries.forEach { method ->
+                FilterChip(
+                    selected = method in vm.allowedMethods,
+                    onClick = {
+                        // Ao menos um modo precisa ficar marcado.
+                        vm.allowedMethods = if (method in vm.allowedMethods) {
+                            (vm.allowedMethods - method).ifEmpty { vm.allowedMethods }
+                        } else {
+                            vm.allowedMethods + method
+                        }
+                    },
+                    label = { Text(signatureMethodLabel(method)) }
+                )
+            }
+        }
+        HorizontalDivider()
         OutlinedTextField(
             value = vm.message,
             onValueChange = { vm.message = it },
@@ -369,6 +388,12 @@ private fun ReviewStep(container: AppContainer, vm: NewDocumentViewModel, onSent
             Text(if (vm.busy) "Enviando…" else "Confirmar envio")
         }
     }
+}
+
+fun signatureMethodLabel(method: SignatureMethod): String = when (method) {
+    SignatureMethod.DRAW -> "Desenhar"
+    SignatureMethod.TYPED -> "Digitar nome"
+    SignatureMethod.CERTIFICATE -> "Certificado digital"
 }
 
 fun roleLabel(role: SignatoryRoleType): String = when (role) {

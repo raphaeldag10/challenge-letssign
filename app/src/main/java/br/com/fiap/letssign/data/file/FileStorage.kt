@@ -18,6 +18,9 @@ import java.util.UUID
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/** Quantidade de estilos disponíveis para a assinatura digitada. */
+const val TYPED_STYLE_COUNT = 3
+
 /** Campo de assinatura já convertido para coordenadas normalizadas (0 a 1) da página. */
 data class FieldPlacement(
     val pageNumber: Int,
@@ -102,6 +105,38 @@ class FileStorage(private val context: Context) {
         FileOutputStream(target).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
         return target.absolutePath
+    }
+
+    /**
+     * Gera a assinatura digitada como PNG: o nome escrito com um dos [TYPED_STYLE_COUNT] estilos de letra cursiva
+     * do sistema. O PNG tem fundo transparente e é recortado ao texto, como a assinatura desenhada.
+     */
+    fun saveTypedSignature(name: String, styleIndex: Int): String {
+        val text = name.trim()
+        require(text.length >= 3) { "Digite seu nome completo para assinar" }
+        val typeface = typedStyle(styleIndex)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 96f
+            this.typeface = typeface
+        }
+        val bounds = android.graphics.Rect()
+        paint.getTextBounds(text, 0, text.length, bounds)
+        val padding = 24
+        val width = (bounds.width() + padding * 2).coerceAtLeast(1)
+        val height = (bounds.height() + padding * 2).coerceAtLeast(1)
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        Canvas(bitmap).drawText(text, (padding - bounds.left).toFloat(), (padding - bounds.top).toFloat(), paint)
+        val target = File(signaturesDir, "${UUID.randomUUID()}.png")
+        FileOutputStream(target).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+        return target.absolutePath
+    }
+
+    private fun typedStyle(index: Int): android.graphics.Typeface = when (index) {
+        0 -> android.graphics.Typeface.create("cursive", android.graphics.Typeface.NORMAL)
+        1 -> android.graphics.Typeface.create("cursive", android.graphics.Typeface.BOLD)
+        else -> android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.ITALIC)
     }
 
     /**

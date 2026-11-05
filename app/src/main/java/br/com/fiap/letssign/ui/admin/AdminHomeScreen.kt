@@ -42,12 +42,11 @@ import androidx.lifecycle.viewModelScope
 import br.com.fiap.letssign.AppContainer
 import br.com.fiap.letssign.data.local.entity.DocumentStatus
 import br.com.fiap.letssign.data.repository.LoggedUser
+import br.com.fiap.letssign.ui.common.BrandTopBar
 import br.com.fiap.letssign.ui.common.BrandLogo
 import br.com.fiap.letssign.ui.common.appViewModel
 import br.com.fiap.letssign.ui.common.firstNameOf
 import br.com.fiap.letssign.ui.common.initialsOf
-import br.com.fiap.letssign.ui.theme.BrandBlue
-import br.com.fiap.letssign.ui.theme.BrandBlueSoft
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -74,6 +73,8 @@ fun AdminHomeScreen(
 ) {
     val vm = appViewModel { AdminHomeViewModel(container) }
 
+    Column(Modifier.fillMaxSize()) {
+        BrandTopBar(initials = initialsOf(user.fullName), onAccount = onAccount)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -81,28 +82,6 @@ fun AdminHomeScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            BrandLogo(iconSize = 32)
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .clickable(onClick = onAccount),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    initialsOf(user.fullName),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Olá, ${firstNameOf(user.fullName)}! 👋",
@@ -169,12 +148,12 @@ fun AdminHomeScreen(
                 Text(
                     vm.inProgress.toString(),
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
             Icon(Icons.Filled.KeyboardArrowRight, contentDescription = null)
         }
+    }
     }
 }
 

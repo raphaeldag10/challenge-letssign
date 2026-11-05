@@ -10,6 +10,7 @@ import androidx.room.TypeConverters
 import br.com.fiap.letssign.data.local.converter.Converters
 import br.com.fiap.letssign.data.local.dao.DocumentDao
 import br.com.fiap.letssign.data.local.dao.UserDao
+import br.com.fiap.letssign.data.local.entity.ALL_SIGNATURE_METHODS
 import br.com.fiap.letssign.data.local.entity.DocumentEntity
 import br.com.fiap.letssign.data.local.entity.DocumentHistoryEntity
 import br.com.fiap.letssign.data.local.entity.DocumentSignatoryEntity
@@ -24,7 +25,7 @@ import br.com.fiap.letssign.data.local.entity.UserEntity
         SignatureFieldEntity::class,
         DocumentHistoryEntity::class
     ],
-    version = 5,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -49,6 +50,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Registra o modo de assinatura e o nome do signatário; assinaturas antigas ficam nulas (desenho). */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE document_signatories ADD COLUMN signatureMethod TEXT")
+                db.execSQL("ALTER TABLE document_signatories ADD COLUMN signerName TEXT")
+            }
+        }
+
+        /** Guarda a assinatura CAdES e os dados do certificado ICP-Brasil nas assinaturas com certificado. */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE document_signatories ADD COLUMN signatureCms TEXT")
+                db.execSQL("ALTER TABLE document_signatories ADD COLUMN certificateSerial TEXT")
+                db.execSQL("ALTER TABLE document_signatories ADD COLUMN certificateIssuer TEXT")
+            }
+        }
+
+        /** Acrescenta os modos de assinatura aceitos por documento; documentos antigos aceitam todos. */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE documents ADD COLUMN allowedSignatureMethods TEXT NOT NULL DEFAULT '$ALL_SIGNATURE_METHODS'")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -59,7 +84,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "letssign_database"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     // Versões anteriores à 3 ainda recriam o banco (sem dados reais antes da entrega).
                     .fallbackToDestructiveMigration()
                     .build()

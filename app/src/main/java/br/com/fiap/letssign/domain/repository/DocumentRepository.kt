@@ -5,8 +5,10 @@ import br.com.fiap.letssign.data.local.entity.DocumentHistoryEntity
 import br.com.fiap.letssign.data.local.entity.DocumentSignatoryEntity
 import br.com.fiap.letssign.data.local.entity.DocumentStatus
 import br.com.fiap.letssign.data.local.entity.SignatureFieldEntity
+import br.com.fiap.letssign.data.local.entity.SignatureMethod
 import br.com.fiap.letssign.data.local.model.DocumentSummary
 import br.com.fiap.letssign.data.local.model.SignatoryDetail
+import br.com.fiap.letssign.data.signature.CertificateSignature
 import kotlinx.coroutines.flow.Flow
 
 /** Contrato de documentos. A implementação atual usa Room; a API REST da Sprint 2 implementará o mesmo contrato. */
@@ -29,7 +31,14 @@ interface DocumentRepository {
     ): Long
 
     /** Registra a assinatura do participante e retorna a nova situação do documento. */
-    suspend fun signDocument(documentId: Long, userId: Long, signaturePath: String): DocumentStatus
+    suspend fun signDocument(
+        documentId: Long,
+        userId: Long,
+        signaturePath: String,
+        method: SignatureMethod,
+        signerName: String,
+        certificate: CertificateSignature? = null
+    ): DocumentStatus
     suspend fun setFinalFilePath(documentId: Long, path: String)
 
     suspend fun getSignatoryRecord(documentId: Long, userId: Long): DocumentSignatoryEntity?

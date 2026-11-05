@@ -3,10 +3,13 @@ package br.com.fiap.letssign.data.repository
 import androidx.room.withTransaction
 import br.com.fiap.letssign.data.local.AppDatabase
 import br.com.fiap.letssign.data.local.entity.DocumentEntity
+import br.com.fiap.letssign.data.local.entity.allowedMethods
 import br.com.fiap.letssign.data.local.entity.DocumentHistoryEntity
 import br.com.fiap.letssign.data.local.entity.DocumentSignatoryEntity
 import br.com.fiap.letssign.data.local.entity.DocumentStatus
 import br.com.fiap.letssign.data.local.entity.SignatureFieldEntity
+import br.com.fiap.letssign.data.local.entity.SignatureMethod
+import br.com.fiap.letssign.data.signature.CertificateSignature
 import br.com.fiap.letssign.data.local.model.DocumentSummary
 import br.com.fiap.letssign.data.local.model.SignatoryDetail
 import br.com.fiap.letssign.domain.repository.DocumentRepository
@@ -56,6 +59,7 @@ class RoomDocumentRepository(private val db: AppDatabase) : DocumentRepository {
                 "Campo associado a um signatário que não faz parte do documento"
             }
         }
+        require(document.allowedMethods().isNotEmpty()) { "Escolha ao menos um modo de assinatura" }
         // Regra do guia de telas: cada signatário precisa de ao menos um campo.
         signatoryUserIds.forEach { userId ->
             require(fields.any { it.signatoryId == userId }) { "Adicione um campo para cada signatário" }
@@ -64,22 +68,43 @@ class RoomDocumentRepository(private val db: AppDatabase) : DocumentRepository {
         db.withTransaction { dao.insertFullDocumentFlow(document, signatories, fields) }
     }
 
-    override suspend fun signDocument(documentId: Long, userId: Long, signaturePath: String): DocumentStatus =
+    override suspend fun signDocument(
+        documentId: Long,
+        userId: Long,
+        signaturePath: String,
+        method: SignatureMethod,
+        signerName: String,
+        certificate: CertificateSignature?
+    ): DocumentStatus =
         withContext(Dispatchers.IO) {
             db.withTransaction {
                 val record = dao.getSignatoryRecord(documentId, userId)
                     ?: throw IllegalArgumentException("Você não é participante deste documento")
                 require(!record.hasSigned) { "Assinatura já registrada" }
                 val document = requireNotNull(dao.getDocumentById(documentId)) { "Documento não encontrado" }
+                require(method in document.allowedMethods()) { "Este documento não aceita esse modo de assinatura" }
 
                 dao.updateSignatory(
-                    record.copy(hasSigned = true, signedAt = System.currentTimeMillis(), signaturePath = signaturePath)
+                    record.copy(
+                        hasSigned = true,
+                        signedAt = System.currentTimeMillis(),
+                        signaturePath = signaturePath,
+                        signatureMethod = method,
+                        signerName = signerName,
+                        signatureCms = certificate?.cmsBase64,
+                        certificateSerial = certificate?.serial,
+                        certificateIssuer = certificate?.issuer
+                    )
                 )
                 dao.insertHistory(
                     DocumentHistoryEntity(
                         documentId = documentId,
                         eventType = "SIGNED",
-                        description = "Assinatura registrada pelo participante."
+                        description = when (method) {
+                            SignatureMethod.DRAW -> "Assinatura desenhada registrada pelo participante."
+                            SignatureMethod.TYPED -> "Assinatura digitada registrada pelo participante."
+                            SignatureMethod.CERTIFICATE -> "Assinatura com certificado digital registrada pelo participante."
+                        }
                     )
                 )
 

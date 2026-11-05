@@ -13,6 +13,9 @@ import br.com.fiap.letssign.data.local.entity.DocumentEntity
 import br.com.fiap.letssign.data.local.entity.DocumentSignatoryEntity
 import br.com.fiap.letssign.data.local.entity.SignatoryRoleType
 import br.com.fiap.letssign.data.local.entity.SignatureFieldEntity
+import br.com.fiap.letssign.data.local.entity.SignatureMethod
+import br.com.fiap.letssign.data.local.entity.allowedMethods
+import br.com.fiap.letssign.data.local.entity.toStorage
 import br.com.fiap.letssign.data.local.entity.UserEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,6 +63,9 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
     var selectedFieldId by mutableStateOf<Long?>(null)
     var pendingRemoval by mutableStateOf<Long?>(null)
     var replacingUserId by mutableStateOf<Long?>(null)
+
+    /** Modos de assinatura que o admin libera para este documento. Padrão: todos. */
+    var allowedMethods by mutableStateOf(SignatureMethod.entries.toSet())
 
     var parentId by mutableStateOf<Long?>(null)
     var versionNumber by mutableStateOf(1)
@@ -132,6 +138,8 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
                 val repo = container.documentRepository
                 val original = withContext(Dispatchers.IO) { repo.getDocumentById(id) }
                     ?: throw PdfException("Documento original não encontrado.")
+                // Uma nova versão herda os modos de assinatura do original; o admin pode mudar na revisão.
+                allowedMethods = original.allowedMethods()
                 val copy = withContext(Dispatchers.IO) { files.copyPdf(original.filePath) }
                 val (handle, sizes) = withContext(Dispatchers.IO) {
                     val handle = PdfPages.open(copy)
@@ -330,6 +338,10 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
             return
         }
         val path = pdfPath ?: return
+        if (allowedMethods.isEmpty()) {
+            error = "Escolha ao menos um modo de assinatura."
+            return
+        }
         val admin = container.userRepository.currentUser ?: run {
             error = "Sessão expirada. Entre novamente."
             return
@@ -342,7 +354,8 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
             message = message.trim().ifBlank { null },
             versionNumber = versionNumber,
             parentDocumentId = parentId,
-            fileName = pdfName.ifBlank { null }
+            fileName = pdfName.ifBlank { null },
+            allowedSignatureMethods = allowedMethods.toStorage()
         )
         // Campos referenciam o participante pelo userId; o DAO converte para o ID gerado.
         val signatoryEntities = signatories.map {
