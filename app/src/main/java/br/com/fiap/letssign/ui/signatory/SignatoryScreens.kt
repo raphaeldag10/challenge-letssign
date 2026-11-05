@@ -79,6 +79,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -166,6 +167,7 @@ fun SignatoryHomeScreen(
 ) {
     val vm = appViewModel(key = "home-${user.id}") { SignatoryHomeViewModel(container, user.id) }
     Scaffold(
+        modifier = Modifier.imePadding(),
         topBar = {
             BrandTopBar(
                 initials = initialsOf(user.fullName),
@@ -402,6 +404,7 @@ fun SignatoryDocumentScreen(
     documentId: Long,
     user: LoggedUser,
     onSign: () -> Unit,
+    onAssistant: () -> Unit,
     onBack: () -> Unit
 ) {
     val vm = appViewModel(key = "view-$documentId-${user.id}") { SignatoryDocumentViewModel(container, documentId, user) }
@@ -433,6 +436,9 @@ fun SignatoryDocumentScreen(
                     }
                 }
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onAssistant, modifier = Modifier.fillMaxWidth()) {
+                        Text("Resumo e dúvidas")
+                    }
                     if (vm.canSign) {
                         Button(onClick = onSign, modifier = Modifier.fillMaxWidth()) { Text("Assinar") }
                     } else if (vm.status != DocumentStatus.COMPLETED) {

@@ -3,6 +3,7 @@ package br.com.fiap.letssign.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -36,6 +37,7 @@ import br.com.fiap.letssign.ui.auth.ProfileChoiceScreen
 import br.com.fiap.letssign.ui.auth.SetupScreen
 import br.com.fiap.letssign.ui.common.CenteredLoading
 import br.com.fiap.letssign.ui.newdoc.NewDocumentScreen
+import br.com.fiap.letssign.ui.signatory.DocumentAssistantScreen
 import br.com.fiap.letssign.ui.signatory.SignatoryDocumentScreen
 import br.com.fiap.letssign.ui.signatory.SignatoryHomeScreen
 import br.com.fiap.letssign.ui.signatory.SignatureScreen
@@ -54,6 +56,7 @@ sealed interface Route {
     data object SignatoryHome : Route
     data class DocumentDetail(val id: Long) : Route
     data class DocumentView(val id: Long) : Route
+    data class DocumentAssistant(val id: Long) : Route
     data class SignDocument(val id: Long) : Route
     data class NewDocument(val versionOfId: Long?, val nonce: Long) : Route
     data class SignatoryForm(val id: Long?) : Route
@@ -175,6 +178,13 @@ private fun AuthenticatedRoute(
             documentId = route.id,
             user = user,
             onSign = { nav.push(Route.SignDocument(route.id)) },
+            onAssistant = { nav.push(Route.DocumentAssistant(route.id)) },
+            onBack = { nav.pop() }
+        )
+        is Route.DocumentAssistant -> DocumentAssistantScreen(
+            container = container,
+            documentId = route.id,
+            user = user,
             onBack = { nav.pop() }
         )
         is Route.SignDocument -> SignatureScreen(
@@ -224,6 +234,7 @@ private fun AdminShell(
         Triple(Route.Account, "Perfil", Icons.Filled.AccountCircle)
     )
     Scaffold(
+        modifier = Modifier.imePadding(),
         bottomBar = {
             NavigationBar {
                 tabs.forEach { (tab, label, icon) ->
