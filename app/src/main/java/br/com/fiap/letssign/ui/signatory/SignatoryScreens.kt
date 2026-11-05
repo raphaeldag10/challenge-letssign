@@ -217,6 +217,7 @@ class SignatureViewModel(
     var busy by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var done by mutableStateOf(false)
+    var alreadySigned by mutableStateOf(false)
 
     fun save(strokes: List<List<PointF>>, padWidth: Int, padHeight: Int) {
         if (busy) return
@@ -236,7 +237,14 @@ class SignatureViewModel(
                 }
                 done = true
             } catch (e: IllegalArgumentException) {
-                error = e.message
+                if (e.message == "Assinatura já registrada") {
+                    // Já existe uma assinatura deste participante (outro acesso ou toque repetido):
+                    // não assina de novo; mostra a conclusão do registro existente.
+                    alreadySigned = true
+                    done = true
+                } else {
+                    error = e.message
+                }
             } catch (e: Exception) {
                 error = "Não foi possível confirmar o salvamento. Seu desenho foi preservado; tente novamente."
             } finally {
@@ -259,8 +267,14 @@ fun SignatureScreen(container: AppContainer, documentId: Long, user: LoggedUser,
                 Modifier.fillMaxSize().padding(padding).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Sua participação foi concluída.", style = MaterialTheme.typography.titleLarge)
-                Text("O documento só fica concluído quando todos os signatários obrigatórios assinarem.")
+                Text(
+                    if (vm.alreadySigned) "Sua assinatura já estava registrada." else "Sua participação foi concluída.",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Text(
+                    if (vm.alreadySigned) "Nada foi assinado novamente. O registro foi recarregado."
+                    else "O documento só fica concluído quando todos os signatários obrigatórios assinarem."
+                )
                 Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Concluir") }
             }
         } else {

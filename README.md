@@ -146,11 +146,11 @@ Projeções em `data/local/model/Projections.kt`: `DocumentSummary` (lista, com 
   - Signatários: busca, cadastro e edição com validações.
 - **Novo documento** (`newdoc/`): assistente em quatro passos, com a barra inferior oculta.
   - Documento: título e seleção de PDF, com validação antes de continuar.
-  - Pessoas: seleção múltipla, função por pessoa e confirmação ao remover quem tem campos.
+  - Pessoas: seleção múltipla, função por pessoa, confirmação ao remover quem tem campos e **substituição de signatário** (troca a pessoa, mantém a função e reassocia os campos já posicionados).
   - Campos: página por página, com adicionar, arrastar, redimensionar e excluir. Detecta sobreposição.
   - Revisão: resumo, mensagem do convite e "Confirmar envio", com "Enviando…" para evitar toques repetidos.
   - Nova versão: pré-preenchida a partir do documento original, com novo arquivo.
-- **Signatário** (`signatory/`): abas Pendentes e Assinados. A leitura mostra o PDF com os próprios campos em destaque. A tela de assinatura tem desenho com dedo, Limpar e Confirmar, e mostra a conclusão da participação.
+- **Signatário** (`signatory/`): abas Pendentes e Assinados. A leitura mostra o PDF com os próprios campos em destaque. A tela de assinatura tem desenho com dedo, Limpar e Confirmar, e mostra a conclusão da participação. Se a assinatura já estiver registrada (outro acesso ou toque repetido), o app recarrega o registro e informa isso, sem assinar de novo.
 - **Comuns** (`common/`): barra de topo, renderização de página com sobreposição (`PdfPageImage`), campos somente leitura (`ReadOnlyFields`), status em português e abertura de PDF.
 
 ### Geometria
@@ -178,11 +178,11 @@ Esta seção lista só o que não está pronto. Os limites de implementação ta
 
 ### 4.2 Aderência ao guia de telas (P2)
 - [ ] Cadastro de signatário dentro da etapa Pessoas (hoje é preciso cadastrar antes, na aba Signatários).
-- [ ] "Substituir" signatário: hoje é remover e adicionar, sem reassociar os campos do removido.
+- [x] "Substituir" signatário: troca a pessoa, mantém a função e reassocia os campos já posicionados.
 - [ ] Zoom no editor de campos e alternativa sem arrastar (mover para cima, baixo, esquerda e direita).
 - [ ] Mensagens de erro junto ao campo, com o foco no primeiro erro (hoje aparecem em um texto no fim da tela).
 - [ ] Estado "Envio não confirmado" com contagem de convites registrados e pendentes (hoje o envio é atômico, então não há resultado parcial).
-- [ ] Mensagem de "assinatura já registrada em outro acesso", que recarrega o registro existente (hoje aparece a mensagem de erro).
+- [x] Mensagem de "assinatura já registrada": recarrega o registro existente e não assina de novo.
 - [ ] Ao trocar o PDF com campos, o aviso de descarte é mostrado depois da troca, não antes de confirmar.
 
 ### 4.3 Acessibilidade e acabamento (P3)
@@ -439,7 +439,7 @@ O plano da seção 10 foi executado. Abaixo, o que foi feito em cada fase e o qu
 | F4 Acompanhamento e PDF final | Feito | Participantes, histórico, PDF final com assinaturas nas coordenadas normalizadas |
 | F5 Acesso e versões | Feito | Checagem de acesso antes de abrir documento/PDF; nova versão pré-preenchida |
 | F6 Testes | Parcial | Unitários passam; instrumentados compilam e não foram executados |
-| F7 Entregáveis | Parcial | APK de debug gerado; zip do código gerado; apresentação, vídeo e dados do grupo são do grupo |
+| F7 Entregáveis | Parcial | APK de debug gerado (regenerado com a substituição de signatário e a assinatura já registrada); zip do código gerado; apresentação, vídeo e dados do grupo são do grupo |
 
 ### Mudanças de build necessárias para compilar
 
@@ -450,10 +450,15 @@ O plano da seção 10 foi executado. Abaixo, o que foi feito em cada fase e o qu
 - `libs.versions.toml`: KSP `2.2.10-2.0.2` (compatível com Kotlin 2.2.10) e Room `2.8.5` (a 2.6.1 falhava no KSP com `unexpected jvm signature V`).
 - `AndroidManifest.xml`: `LetsSignApp` e `FileProvider` para abrir PDFs no app de visualização.
 
+### Entregas recentes
+
+- **Substituir signatário** na etapa Pessoas, com reassociação dos campos já posicionados (`NewDocumentViewModel.replaceSignatory`).
+- **Assinatura já registrada**: a tela de assinatura recarrega o registro existente em vez de mostrar erro (`SignatureViewModel.save`).
+- APK de debug regenerado com `./gradlew :app:assembleDebug`; testes unitários passando.
+
 ### Limites conhecidos (não implementados)
 
 - Na etapa **Pessoas** não há cadastro de signatário no meio do fluxo; é preciso cadastrar antes, na aba Signatários.
-- "Substituir" um signatário é feito por remover e adicionar outro. Os campos do removido são apagados (com confirmação), e não reassociados.
 - O editor de campos não tem zoom nem alternativa de teclado para mover campos (o guia pede as duas coisas por acessibilidade).
 - O reenvio após falha não consulta uma operação anterior: a gravação é uma transação, então uma falha não deixa dados parciais e pode ser repetida.
 - Migrações do Room são destrutivas (`fallbackToDestructiveMigration`); aceitável antes da entrega, não para produção.

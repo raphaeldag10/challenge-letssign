@@ -59,6 +59,7 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
     var selectedUserId by mutableStateOf<Long?>(null)
     var selectedFieldId by mutableStateOf<Long?>(null)
     var pendingRemoval by mutableStateOf<Long?>(null)
+    var replacingUserId by mutableStateOf<Long?>(null)
 
     var parentId by mutableStateOf<Long?>(null)
     var versionNumber by mutableStateOf(1)
@@ -197,6 +198,27 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
 
     fun cancelRemoval() {
         pendingRemoval = null
+    }
+
+    /**
+     * Troca o signatário [oldUserId] por [newPerson], mantendo a função e reassociando
+     * os campos já posicionados (posição e página não mudam).
+     */
+    fun replaceSignatory(oldUserId: Long, newPerson: UserEntity) {
+        val i = signatories.indexOfFirst { it.userId == oldUserId }
+        if (i < 0) return
+        if (signatories.any { it.userId == newPerson.id }) {
+            error = "${newPerson.fullName} já está neste documento."
+            return
+        }
+        val role = signatories[i].role
+        signatories[i] = DraftSignatory(newPerson.id, newPerson.fullName, newPerson.email, role)
+        for (k in fields.indices) {
+            if (fields[k].userId == oldUserId) fields[k] = fields[k].copy(userId = newPerson.id)
+        }
+        if (selectedUserId == oldUserId) selectedUserId = newPerson.id
+        replacingUserId = null
+        error = null
     }
 
     private fun removeSignatory(userId: Long) {
