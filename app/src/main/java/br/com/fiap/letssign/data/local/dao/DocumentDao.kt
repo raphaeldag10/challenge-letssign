@@ -35,7 +35,8 @@ interface DocumentDao {
         SELECT d.id AS id, d.title AS title, d.status AS status, d.createdAt AS createdAt,
                d.versionNumber AS versionNumber, d.filePath AS filePath, d.fileName AS fileName,
                (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id) AS total,
-               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed
+               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed,
+               (SELECT u.fullName FROM users u WHERE u.id = d.createdById) AS senderName
         FROM documents d
         ORDER BY d.createdAt DESC
     """)
@@ -46,7 +47,8 @@ interface DocumentDao {
         SELECT d.id AS id, d.title AS title, d.status AS status, d.createdAt AS createdAt,
                d.versionNumber AS versionNumber, d.filePath AS filePath, d.fileName AS fileName,
                (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id) AS total,
-               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed
+               (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed,
+               (SELECT u.fullName FROM users u WHERE u.id = d.createdById) AS senderName
         FROM documents d
         INNER JOIN document_signatories me ON me.documentId = d.id
         WHERE me.userId = :userId AND me.hasSigned = :signed

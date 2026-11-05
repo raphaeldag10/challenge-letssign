@@ -13,7 +13,9 @@ data class DocumentSummary(
     val total: Int,
     val signed: Int,
     val filePath: String,
-    val fileName: String?
+    val fileName: String?,
+    /** Nome de quem enviou o documento. */
+    val senderName: String? = null
 )
 
 /** Participante com nome e situação, para a tela de acompanhamento. */
