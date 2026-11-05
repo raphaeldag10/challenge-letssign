@@ -47,6 +47,7 @@ import br.com.fiap.letssign.ui.common.ActionShape
 import br.com.fiap.letssign.ui.common.ErrorText
 import br.com.fiap.letssign.ui.common.FormScaffold
 import br.com.fiap.letssign.ui.common.FormSectionTitle
+import br.com.fiap.letssign.ui.common.CpfVisualTransformation
 import br.com.fiap.letssign.ui.common.LabeledField
 import br.com.fiap.letssign.ui.common.appViewModel
 import kotlinx.coroutines.launch
@@ -79,7 +80,7 @@ class EditProfileViewModel(private val container: AppContainer, private val user
         name = profile.fullName
         email = profile.email
         phone = profile.phone
-        cpf = Cpf.format(profile.cpf.orEmpty())
+        cpf = profile.cpf.orEmpty()
         cpfLocked = profile.cpfLockedByAdmin
         role = profile.role
         authMode = profile.authMode
@@ -187,8 +188,9 @@ fun EditProfileScreen(
                     label = "CPF",
                     required = false,
                     value = vm.cpf,
-                    onValueChange = { vm.cpf = Cpf.format(it) },
+                    onValueChange = { vm.cpf = Cpf.digitsOf(it).take(Cpf.LENGTH) },
                     placeholder = "000.000.000-00",
+                    visualTransformation = CpfVisualTransformation,
                     icon = Icons.Outlined.AccountBox,
                     keyboardType = KeyboardType.Number,
                     enabled = !vm.cpfLocked,

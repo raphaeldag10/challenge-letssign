@@ -77,6 +77,7 @@ import br.com.fiap.letssign.ui.common.ErrorText
 import br.com.fiap.letssign.ui.common.FieldLabel
 import br.com.fiap.letssign.ui.common.FieldShape
 import br.com.fiap.letssign.ui.common.FormScaffold
+import br.com.fiap.letssign.ui.common.CpfVisualTransformation
 import br.com.fiap.letssign.ui.common.LabeledField
 import br.com.fiap.letssign.ui.common.appViewModel
 import kotlinx.coroutines.launch
@@ -232,7 +233,7 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
                     email = it.email
                     phone = it.phone
                     authMode = it.authMode
-                    cpf = Cpf.format(it.cpf.orEmpty())
+                    cpf = it.cpf.orEmpty()
                     cpfFromSignatory = it.cpf != null && !it.cpfLockedByAdmin
                 }
                 loaded = true
@@ -313,8 +314,9 @@ fun SignatoryFormScreen(container: AppContainer, signatoryId: Long?, onDone: () 
                 label = "CPF",
                 required = false,
                 value = vm.cpf,
-                onValueChange = { vm.cpf = Cpf.format(it) },
+                onValueChange = { vm.cpf = Cpf.digitsOf(it).take(Cpf.LENGTH) },
                 placeholder = "000.000.000-00",
+                visualTransformation = CpfVisualTransformation,
                 icon = Icons.Outlined.AccountBox,
                 keyboardType = KeyboardType.Number,
                 supportingText = if (vm.cpfFromSignatory) {
