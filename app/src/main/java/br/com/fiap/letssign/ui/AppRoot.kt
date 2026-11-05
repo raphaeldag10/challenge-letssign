@@ -236,8 +236,10 @@ private fun AdminShell(
                 )
                 else -> DocumentsScreen(
                     container = container,
+                    user = user,
                     onOpen = { nav.push(Route.DocumentDetail(it)) },
-                    onNew = { nav.push(Route.NewDocument(null, System.nanoTime())) }
+                    onNew = { nav.push(Route.NewDocument(null, System.nanoTime())) },
+                    onAccount = { nav.replaceAll(Route.Account) }
                 )
             }
         }

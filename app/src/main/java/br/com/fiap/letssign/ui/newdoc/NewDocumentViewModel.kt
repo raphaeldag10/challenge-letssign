@@ -137,7 +137,7 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
                     val handle = PdfPages.open(copy)
                     handle to (0 until handle.pageCount).map { handle.pageSize(it) }
                 }
-                replacePdf(copy, "versão de ${original.title}", handle, sizes)
+                replacePdf(copy, original.fileName ?: "${original.title}.pdf", handle, sizes)
                 title = original.title
                 message = original.message.orEmpty()
                 parentId = original.id
@@ -341,7 +341,8 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
             createdById = admin.id,
             message = message.trim().ifBlank { null },
             versionNumber = versionNumber,
-            parentDocumentId = parentId
+            parentDocumentId = parentId,
+            fileName = pdfName.ifBlank { null }
         )
         // Campos referenciam o participante pelo userId; o DAO converte para o ID gerado.
         val signatoryEntities = signatories.map {
