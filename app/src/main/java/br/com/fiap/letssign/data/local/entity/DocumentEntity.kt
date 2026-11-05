@@ -38,5 +38,7 @@ data class DocumentEntity(
     val message: String? = null,
     val versionNumber: Int = 1,
     val parentDocumentId: Long? = null,
-    val finalFilePath: String? = null
+    val finalFilePath: String? = null,
+    /** Nome original do PDF escolhido pelo Admin (ex.: contrato.pdf). Nulo em documentos anteriores à versão 4. */
+    val fileName: String? = null
 )

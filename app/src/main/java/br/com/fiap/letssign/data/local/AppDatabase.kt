@@ -1,6 +1,8 @@
 package br.com.fiap.letssign.data.local
 
 import android.content.Context
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -22,7 +24,7 @@ import br.com.fiap.letssign.data.local.entity.UserEntity
         SignatureFieldEntity::class,
         DocumentHistoryEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -32,6 +34,13 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun documentDao(): DocumentDao
 
     companion object {
+        /** Acrescenta o nome original do PDF sem apagar os documentos existentes. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE documents ADD COLUMN fileName TEXT")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -42,7 +51,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "letssign_database"
                 )
-                    // Antes da entrega não há dados reais; as versões 2 e 3 recriam o banco.
+                    .addMigrations(MIGRATION_3_4)
+                    // Versões anteriores à 3 ainda recriam o banco (sem dados reais antes da entrega).
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

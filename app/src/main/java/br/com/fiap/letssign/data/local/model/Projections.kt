@@ -11,7 +11,9 @@ data class DocumentSummary(
     val createdAt: Long,
     val versionNumber: Int,
     val total: Int,
-    val signed: Int
+    val signed: Int,
+    val filePath: String,
+    val fileName: String?
 )
 
 /** Participante com nome e situação, para a tela de acompanhamento. */

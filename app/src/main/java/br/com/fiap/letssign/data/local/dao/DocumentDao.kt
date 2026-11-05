@@ -33,7 +33,7 @@ interface DocumentDao {
     // Lista do Admin: todos os documentos com progresso de assinaturas.
     @Query("""
         SELECT d.id AS id, d.title AS title, d.status AS status, d.createdAt AS createdAt,
-               d.versionNumber AS versionNumber,
+               d.versionNumber AS versionNumber, d.filePath AS filePath, d.fileName AS fileName,
                (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id) AS total,
                (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed
         FROM documents d
@@ -44,7 +44,7 @@ interface DocumentDao {
     // Lista do Signatário: documentos em que ele é participante, pendentes ou assinados por ele.
     @Query("""
         SELECT d.id AS id, d.title AS title, d.status AS status, d.createdAt AS createdAt,
-               d.versionNumber AS versionNumber,
+               d.versionNumber AS versionNumber, d.filePath AS filePath, d.fileName AS fileName,
                (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id) AS total,
                (SELECT COUNT(*) FROM document_signatories s WHERE s.documentId = d.id AND s.hasSigned = 1) AS signed
         FROM documents d
