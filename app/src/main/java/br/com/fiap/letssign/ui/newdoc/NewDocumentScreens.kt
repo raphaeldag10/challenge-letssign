@@ -2,6 +2,26 @@ package br.com.fiap.letssign.ui.newdoc
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.border
@@ -65,33 +85,35 @@ fun NewDocumentScreen(
     onSent: (Long) -> Unit
 ) {
     val vm = appViewModel(key = viewModelKey) { NewDocumentViewModel(container, versionOfId) }
-    val title = if (vm.parentId != null) "Nova versão ${vm.versionNumber}" else "Novo documento"
+    val title = if (vm.step == 3) "Revisar e enviar" else if (vm.parentId != null) "Nova versão ${vm.versionNumber}" else "Novo documento"
     FormScaffold(
         title = title,
         onBack = { if (vm.step == 0) onCancel() else vm.back() }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            Text(
-                "Passo ${vm.step + 1} de ${STEP_TITLES.size}: ${STEP_TITLES[vm.step]}",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(16.dp)
-            )
+            DocumentProgress(vm.step)
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when (vm.step) {
                     0 -> DocumentStep(container, vm)
                     1 -> PeopleStep(vm)
                     2 -> FieldsStep(vm)
-                    else -> ReviewStep(container, vm, onSent)
+                    else -> ReviewStep(container, vm)
                 }
             }
-            if (vm.step < STEP_TITLES.lastIndex) {
-                ErrorText(vm.error)
-                Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(onClick = { vm.next() }, enabled = !vm.loadingPdf, modifier = Modifier.weight(1f)) {
-                        Text("Continuar")
+            Surface(shadowElevation = 4.dp) {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    ErrorText(vm.error)
+                    Button(
+                        onClick = { if (vm.step == STEP_TITLES.lastIndex) vm.send(onSent) else vm.next() },
+                        enabled = !vm.loadingPdf && !vm.busy,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                    ) {
+                        if (vm.step == STEP_TITLES.lastIndex) {
+                            Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(20.dp))
+                            Spacer(Modifier.size(8.dp))
+                        }
+                        Text(if (vm.busy) "Enviando…" else if (vm.step == STEP_TITLES.lastIndex) "Enviar para assinatura" else "Avançar")
                     }
                 }
             }
@@ -100,31 +122,81 @@ fun NewDocumentScreen(
 }
 
 @Composable
+private fun DocumentProgress(step: Int) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            STEP_TITLES.forEachIndexed { index, label ->
+                if (index > 0) HorizontalDivider(Modifier.weight(0.3f),
+                    color = if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                            if (index < step) Icon(Icons.Filled.Check, null, Modifier.size(16.dp))
+                            else Text("${index + 1}", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    Text(label, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.labelSmall,
+                        color = if (index <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        Text("Passo ${step + 1} de ${STEP_TITLES.size}", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
 private fun DocumentStep(container: AppContainer, vm: NewDocumentViewModel) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.importFromUri(uri, uri.lastPathSegment ?: "arquivo.pdf")
     }
+    val outline = MaterialTheme.colorScheme.outlineVariant
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        OutlinedTextField(
-            value = vm.title,
-            onValueChange = { vm.title = it },
-            label = { Text("Título do documento") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Button(onClick = { picker.launch(arrayOf("application/pdf")) }, enabled = !vm.loadingPdf) {
-            Text(if (vm.pdfPath == null) "Selecionar PDF" else "Trocar arquivo")
+        Box(Modifier.fillMaxWidth()) {
+            Canvas(Modifier.matchParentSize()) {
+                drawRoundRect(outline, cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()),
+                    style = Stroke(width = 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f))))
+            }
+            Column(Modifier.fillMaxWidth().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.AutoMirrored.Filled.List, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text("PDF", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                Text("Importar documento (PDF)", fontWeight = FontWeight.SemiBold)
+                Text("Selecione no seu dispositivo o documento que deseja enviar para assinatura.",
+                    textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = { picker.launch(arrayOf("application/pdf")) },
+                    enabled = !vm.loadingPdf, shape = RoundedCornerShape(10.dp)) {
+                    Icon(Icons.Filled.Add, null, Modifier.size(20.dp))
+                    Spacer(Modifier.size(8.dp))
+                    Text(if (vm.loadingPdf) "Lendo o PDF…" else if (vm.pdfPath == null) "Selecionar PDF" else "Trocar arquivo")
+                }
+            }
         }
-        if (vm.loadingPdf) Text("Lendo o PDF…")
-        vm.notice?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-        ErrorText(vm.error)
-        val path = vm.pdfPath
-        if (path != null) {
-            Text("${vm.pdfName} · ${vm.pageCount} página(s)", style = MaterialTheme.typography.bodyMedium)
-            PdfPageImage(pages = vm.pages, pageIndex = 0, aspect = vm.aspect(0))
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Título do documento *", style = MaterialTheme.typography.labelLarge)
+            OutlinedTextField(value = vm.title, onValueChange = { vm.title = it },
+                placeholder = { Text("Ex.: Contrato de prestação de serviços") },
+                singleLine = true, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth())
+        }
+        vm.notice?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        if (vm.pdfPath != null) {
+            Text("${vm.pdfName} · ${vm.pageCount} página(s)", style = MaterialTheme.typography.labelLarge)
+            PdfPageImage(pages = vm.pages, pageIndex = 0, aspect = vm.aspect(0),
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, outline, RoundedCornerShape(12.dp)))
         }
     }
 }
@@ -335,58 +407,96 @@ private fun BoxScope.FieldBox(
 }
 
 @Composable
-private fun ReviewStep(container: AppContainer, vm: NewDocumentViewModel, onSent: (Long) -> Unit) {
+private fun ReviewStep(container: AppContainer, vm: NewDocumentViewModel) {
     val context = LocalContext.current
-    Column(
-        Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(vm.title, style = MaterialTheme.typography.titleLarge)
-        Text("Arquivo: ${vm.pdfName} · ${vm.pageCount} página(s)")
-        vm.pdfPath?.let { path ->
-            OutlinedButton(onClick = { openPdf(context, container.files.shareUri(path)) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Abrir PDF completo")
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        ReviewCard {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.errorContainer) {
+                    Text("PDF", Modifier.padding(12.dp), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(vm.title, style = MaterialTheme.typography.titleSmall)
+                    Text("${vm.pdfName} · ${vm.pageCount} página(s)", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            vm.pdfPath?.let { path ->
+                TextButton(onClick = { openPdf(context, container.files.shareUri(path)) },
+                    modifier = Modifier.padding(horizontal = 8.dp)) { Text("Abrir PDF completo") }
             }
         }
-        HorizontalDivider()
-        Text("Participantes", style = MaterialTheme.typography.titleSmall)
-        vm.signatories.forEach { s ->
-            val pages = vm.fields.filter { it.userId == s.userId }.map { it.page + 1 }.distinct().sorted()
-            Text(
-                "${s.fullName} · ${roleLabel(s.role)} · ${vm.fieldCount(s.userId)} campo(s) " +
-                    "nas páginas ${pages.joinToString(", ")}"
-            )
-        }
-        HorizontalDivider()
-        Text("Como os signatários podem assinar", style = MaterialTheme.typography.titleSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SignatureMethod.entries.forEach { method ->
-                FilterChip(
-                    selected = method in vm.allowedMethods,
-                    onClick = {
-                        // Ao menos um modo precisa ficar marcado.
-                        vm.allowedMethods = if (method in vm.allowedMethods) {
-                            (vm.allowedMethods - method).ifEmpty { vm.allowedMethods }
-                        } else {
-                            vm.allowedMethods + method
+        ReviewCard {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Person, null, Modifier.size(20.dp))
+                Text("Signatários (${vm.signatories.size})", Modifier.weight(1f).padding(start = 8.dp),
+                    style = MaterialTheme.typography.titleSmall)
+                TextButton(onClick = { vm.step = 1 }, enabled = !vm.busy) { Text("Editar") }
+            }
+            vm.signatories.forEachIndexed { index, person ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                        Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
+                            Text("${index + 1}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
-                    },
-                    label = { Text(signatureMethodLabel(method)) }
-                )
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(person.fullName, style = MaterialTheme.typography.titleSmall)
+                        Text(person.email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val pages = vm.fields.filter { it.userId == person.userId }.map { it.page + 1 }.distinct().sorted()
+                        Text("${roleLabel(person.role)} · ${vm.fieldCount(person.userId)} campo(s) · páginas ${pages.joinToString()}",
+                            style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
         }
-        HorizontalDivider()
-        OutlinedTextField(
-            value = vm.message,
-            onValueChange = { vm.message = it },
-            label = { Text("Mensagem do convite (opcional)") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2
-        )
-        ErrorText(vm.error)
-        Button(onClick = { vm.send(onSent) }, enabled = !vm.busy, modifier = Modifier.fillMaxWidth()) {
-            Text(if (vm.busy) "Enviando…" else "Confirmar envio")
+        ReviewCard {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f).padding(vertical = 16.dp)) {
+                    Text("Campos de assinatura", style = MaterialTheme.typography.titleSmall)
+                    Text("${vm.fields.size} campo(s)", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = { vm.step = 2 }, enabled = !vm.busy) { Text("Editar") }
+            }
         }
+        Text("Como os signatários podem assinar", style = MaterialTheme.typography.titleSmall)
+        Column {
+            SignatureMethod.entries.forEach { method ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = method in vm.allowedMethods, enabled = !vm.busy, onCheckedChange = {
+                        vm.allowedMethods = if (it) vm.allowedMethods + method
+                        else (vm.allowedMethods - method).ifEmpty { vm.allowedMethods }
+                    })
+                    Text(signatureMethodLabel(method), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        OutlinedTextField(value = vm.message, onValueChange = { vm.message = it },
+            label = { Text("Mensagem do convite (opcional)") }, minLines = 2, enabled = !vm.busy,
+            shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth())
+        Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Tudo certo!", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    Text("Confira as informações e envie o documento para assinatura.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewCard(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Surface(shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.fillMaxWidth(), content = content)
     }
 }
 
