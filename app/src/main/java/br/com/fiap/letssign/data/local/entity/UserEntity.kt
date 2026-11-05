@@ -1,5 +1,6 @@
 package br.com.fiap.letssign.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -34,5 +35,9 @@ data class UserEntity(
     /** Hash do código de login pendente; nulo quando não há código ativo. */
     val loginCodeHash: String? = null,
     /** Instante (ms) em que o código pendente expira. */
-    val loginCodeExpiresAt: Long? = null
+    val loginCodeExpiresAt: Long? = null,
+    /** CPF somente com dígitos; nulo enquanto não for cadastrado. */
+    val cpf: String? = null,
+    /** Verdadeiro quando o admin cadastrou o CPF: o próprio usuário não pode alterá-lo. */
+    @ColumnInfo(defaultValue = "0") val cpfLockedByAdmin: Boolean = false
 )

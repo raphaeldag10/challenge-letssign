@@ -24,7 +24,7 @@ import br.com.fiap.letssign.data.local.entity.UserEntity
         SignatureFieldEntity::class,
         DocumentHistoryEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -41,6 +41,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Acrescenta CPF e a marca de CPF cadastrado pelo admin, sem apagar os usuários existentes. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE users ADD COLUMN cpf TEXT")
+                db.execSQL("ALTER TABLE users ADD COLUMN cpfLockedByAdmin INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -51,7 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "letssign_database"
                 )
-                    .addMigrations(MIGRATION_3_4)
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
                     // Versões anteriores à 3 ainda recriam o banco (sem dados reais antes da entrega).
                     .fallbackToDestructiveMigration()
                     .build()

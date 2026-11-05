@@ -30,6 +30,7 @@ import br.com.fiap.letssign.ui.admin.DocumentDetailScreen
 import br.com.fiap.letssign.ui.admin.DocumentsScreen
 import br.com.fiap.letssign.ui.admin.SignatoryFormScreen
 import br.com.fiap.letssign.ui.admin.SignatoriesScreen
+import br.com.fiap.letssign.ui.auth.EditProfileScreen
 import br.com.fiap.letssign.ui.auth.LoginScreen
 import br.com.fiap.letssign.ui.auth.ProfileChoiceScreen
 import br.com.fiap.letssign.ui.auth.SetupScreen
@@ -49,6 +50,7 @@ sealed interface Route {
     data object AdminDocuments : Route
     data object AdminSignatories : Route
     data object Account : Route
+    data object EditProfile : Route
     data object SignatoryHome : Route
     data class DocumentDetail(val id: Long) : Route
     data class DocumentView(val id: Long) : Route
@@ -143,8 +145,19 @@ private fun AuthenticatedRoute(
         Route.Account -> if (isAdmin) {
             AdminShell(route, nav, container, user, logout)
         } else {
-            AccountScreen(user, onBack = { nav.pop() }, onLogout = logout)
+            AccountScreen(
+                user,
+                onBack = { nav.pop() },
+                onLogout = logout,
+                onEdit = { nav.push(Route.EditProfile) }
+            )
         }
+        Route.EditProfile -> EditProfileScreen(
+            container = container,
+            user = user,
+            onBack = { nav.pop() },
+            onSaved = { nav.pop() }
+        )
         Route.SignatoryHome -> SignatoryHomeScreen(
             container = container,
             user = user,
@@ -226,7 +239,12 @@ private fun AdminShell(
                     onOpen = { nav.push(Route.SignatoryForm(it)) },
                     onNew = { nav.push(Route.SignatoryForm(null)) }
                 )
-                Route.Account -> AccountScreen(user, onBack = null, onLogout = logout)
+                Route.Account -> AccountScreen(
+                    user,
+                    onBack = null,
+                    onLogout = logout,
+                    onEdit = { nav.push(Route.EditProfile) }
+                )
                 Route.AdminHome -> AdminHomeScreen(
                     container = container,
                     user = user,
