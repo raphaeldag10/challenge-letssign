@@ -46,6 +46,7 @@ import br.com.fiap.letssign.data.repository.LoggedUser
 import br.com.fiap.letssign.ui.common.ActionShape
 import br.com.fiap.letssign.ui.common.ErrorText
 import br.com.fiap.letssign.ui.common.FormScaffold
+import br.com.fiap.letssign.ui.common.FormSectionTitle
 import br.com.fiap.letssign.ui.common.LabeledField
 import br.com.fiap.letssign.ui.common.appViewModel
 import kotlinx.coroutines.launch
@@ -161,7 +162,7 @@ fun EditProfileScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            SectionTitle("Dados pessoais")
+            FormSectionTitle("Dados pessoais")
             LabeledField(
                 label = "Nome completo",
                 required = true,
@@ -209,7 +210,7 @@ fun EditProfileScreen(
             )
 
             if (vm.canChangePassword) {
-                SectionTitle("Alterar senha")
+                FormSectionTitle("Alterar senha")
                 Text(
                     "Deixe em branco para manter a senha atual.",
                     style = MaterialTheme.typography.bodySmall,
@@ -266,15 +267,6 @@ fun EditProfileScreen(
             ErrorText(vm.error)
         }
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold
-    )
 }
 
 private fun visibility(shown: Boolean): VisualTransformation =

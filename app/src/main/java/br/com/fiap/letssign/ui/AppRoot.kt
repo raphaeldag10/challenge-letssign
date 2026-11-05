@@ -108,10 +108,15 @@ fun AppRoot(container: AppContainer) {
 
     when (val route = nav.current) {
         Route.Loading -> CenteredLoading()
-        Route.Setup -> SetupScreen(container) { nav.replaceAll(Route.Login) }
+        Route.Setup -> SetupScreen(
+            container = container,
+            // Só há "voltar" quando a tela foi aberta a partir do login; no primeiro uso, não há para onde voltar.
+            onBack = if (nav.canPop) ({ nav.pop() }) else null,
+            onDone = { nav.replaceAll(Route.Login) }
+        )
         Route.Login -> LoginScreen(
             container = container,
-            onSetup = { nav.replaceAll(Route.Setup) },
+            onSetup = { nav.push(Route.Setup) },
             onLoggedIn = { nav.replaceAll(Route.ProfileChoice) }
         )
         else -> {

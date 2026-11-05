@@ -42,7 +42,6 @@ import br.com.fiap.letssign.AppContainer
 import br.com.fiap.letssign.data.repository.LoggedUser
 import br.com.fiap.letssign.ui.common.BrandLogo
 import br.com.fiap.letssign.ui.common.ErrorText
-import br.com.fiap.letssign.ui.common.ScreenScaffold
 import br.com.fiap.letssign.ui.common.appViewModel
 import br.com.fiap.letssign.ui.theme.BrandBlue
 import kotlinx.coroutines.launch
@@ -62,6 +61,7 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
     var phone by mutableStateOf("")
     var setupEmail by mutableStateOf("")
     var setupPassword by mutableStateOf("")
+    var setupPasswordConfirm by mutableStateOf("")
 
     fun login(onSuccess: (LoggedUser) -> Unit) {
         if (busy) return
@@ -133,7 +133,7 @@ fun LoginScreen(container: AppContainer, onSetup: () -> Unit, onLoggedIn: (Logge
     val vm = appViewModel { AuthViewModel(container) }
     var showPassword by rememberSaveable { mutableStateOf(false) }
     var showCodeLogin by rememberSaveable { mutableStateOf(false) }
-    val buttonColors = ButtonDefaults.buttonColors(containerColor = BrandBlue)
+    val buttonColors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
 
     Column(
         modifier = Modifier
@@ -236,35 +236,7 @@ fun LoginScreen(container: AppContainer, onSetup: () -> Unit, onLoggedIn: (Logge
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Primeiro acesso? ", style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onSetup) { Text("Crie sua conta", color = BrandBlue) }
-        }
-    }
-}
-
-@Composable
-fun SetupScreen(container: AppContainer, onDone: () -> Unit) {
-    val vm = appViewModel { AuthViewModel(container) }
-    ScreenScaffold(title = "Configurar administrador") { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("Primeiro acesso: crie a conta do administrador deste aparelho.")
-            OutlinedTextField(vm.name, { vm.name = it }, label = { Text("Nome completo") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(vm.setupEmail, { vm.setupEmail = it }, label = { Text("E-mail") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(vm.phone, { vm.phone = it }, label = { Text("Telefone") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            OutlinedTextField(
-                vm.setupPassword, { vm.setupPassword = it },
-                label = { Text("Senha (mínimo 8 caracteres)") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(), singleLine = true
-            )
-            ErrorText(vm.error)
-            Button(
-                onClick = { vm.setupAdmin(onDone) },
-                enabled = !vm.busy,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (vm.busy) "Salvando…" else "Criar administrador") }
+            TextButton(onClick = onSetup) { Text("Crie sua conta", color = MaterialTheme.colorScheme.primary) }
         }
     }
 }

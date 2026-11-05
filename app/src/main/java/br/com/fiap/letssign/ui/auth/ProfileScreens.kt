@@ -77,7 +77,7 @@ fun ProfileChoiceScreen(user: LoggedUser, onContinue: () -> Unit, onBack: () -> 
         Spacer(Modifier.weight(1f))
         Button(
             onClick = onContinue,
-            colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             modifier = Modifier.fillMaxWidth()
         ) { Text("Continuar") }
     }
@@ -92,20 +92,20 @@ private fun ProfileCard(role: UserRole, selected: Boolean, onClick: () -> Unit) 
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (selected) BrandBlueSoft else Color.White)
-            .border(if (selected) 2.dp else 1.dp, if (selected) BrandBlue else Color(0xFFD9DEE8), shape)
+            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
+            .border(if (selected) 2.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, shape)
             .clickable(onClick = onClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(BrandBlueSoft),
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 if (isAdmin) Icons.Filled.Person else Icons.Filled.Create,
                 contentDescription = null,
-                tint = BrandBlue
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         Column(Modifier.weight(1f)) {

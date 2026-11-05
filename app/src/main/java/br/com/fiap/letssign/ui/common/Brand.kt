@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +27,7 @@ fun BrandLogo(modifier: Modifier = Modifier, iconSize: Int = 36) {
         )
         Text(
             text = "LetsSign",
-            color = BrandBlue,
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
             fontSize = (iconSize * 0.6).sp,
             modifier = Modifier.padding(start = 8.dp)
