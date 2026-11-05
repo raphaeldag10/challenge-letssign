@@ -27,6 +27,16 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 
+/** Título de seção dentro de um formulário longo. */
+@Composable
+fun FormSectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold
+    )
+}
+
 /** Formato dos campos de texto e dos cartões de opção nas telas de formulário. */
 val FieldShape = RoundedCornerShape(12.dp)
 
@@ -85,7 +95,8 @@ fun LabeledField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailing: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
-    supportingText: String? = null
+    supportingText: String? = null,
+    isError: Boolean = false
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         FieldLabel(label, required)
@@ -98,6 +109,7 @@ fun LabeledField(
             visualTransformation = visualTransformation,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             supportingText = supportingText?.let { { Text(it) } },
+            isError = isError,
             enabled = enabled,
             singleLine = true,
             shape = FieldShape,

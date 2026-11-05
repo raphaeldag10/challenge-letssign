@@ -91,13 +91,13 @@ fun AdminHomeScreen(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(BrandBlueSoft)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
                     .clickable(onClick = onAccount),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     initialsOf(user.fullName),
-                    color = BrandBlue,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -153,15 +153,15 @@ fun AdminHomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(cardShape)
-                .border(1.dp, Color(0xFFD9DEE8), cardShape)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, cardShape)
                 .clickable(onClick = onDocuments)
                 .padding(16.dp)
         ) {
             Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape).background(BrandBlueSoft),
+                modifier = Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.List, contentDescription = null, tint = BrandBlue)
+                Icon(Icons.Filled.List, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
@@ -170,7 +170,7 @@ fun AdminHomeScreen(
                     vm.inProgress.toString(),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = BrandBlue
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             Icon(Icons.Filled.KeyboardArrowRight, contentDescription = null)
@@ -190,17 +190,17 @@ private fun HomeTile(
     Column(
         modifier = modifier
             .clip(shape)
-            .background(BrandBlueSoft)
-            .border(1.dp, Color(0xFFCFDDFB), shape)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
-            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White),
+            modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = BrandBlue)
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         }
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text(subtitle, style = MaterialTheme.typography.bodySmall)

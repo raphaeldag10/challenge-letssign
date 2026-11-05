@@ -55,6 +55,8 @@ import br.com.fiap.letssign.AppContainer
 import br.com.fiap.letssign.data.local.entity.DocumentStatus
 import br.com.fiap.letssign.data.local.model.DocumentSummary
 import br.com.fiap.letssign.data.repository.LoggedUser
+import br.com.fiap.letssign.ui.theme.Tone
+import br.com.fiap.letssign.ui.theme.toneColors
 import br.com.fiap.letssign.ui.common.EmptyState
 import br.com.fiap.letssign.ui.common.appViewModel
 import br.com.fiap.letssign.ui.common.initialsOf
@@ -70,17 +72,8 @@ import kotlinx.coroutines.withContext
 // Paleta da tela de documentos (roxo), separada da cor azul da marca usada nas telas de acesso.
 private val TopBarPurple = Color(0xFF3B1F7A)
 private val Purple = Color(0xFF6D3FD1)
-private val PurpleSoft = Color(0xFFEFE9FF)
-private val MutedText = Color(0xFF6B6785)
-private val CardBorder = Color(0xFFE4DFF0)
 private val PdfRed = Color(0xFFE03131)
 
-private val PendingBg = Color(0xFFE3ECFF)
-private val PendingText = Color(0xFF1D4ED8)
-private val PartialBg = Color(0xFFFFF3C4)
-private val PartialText = Color(0xFF8A5A00)
-private val DoneBg = Color(0xFFDCFCE7)
-private val DoneText = Color(0xFF15803D)
 
 enum class DocumentFilter(val label: String) {
     ALL("Todos"), SENT("Enviados"), PARTIAL("Parciais"), COMPLETED("Concluídos");
@@ -202,7 +195,7 @@ fun DocumentsContent(
             Text(
                 "${counts.awaiting} aguardando · ${counts.partial} parciais · ${counts.completed} concluídos",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MutedText
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             SearchField(query = query, onQuery = onQuery)
             FilterChips(selected = filter, onSelect = onFilter)
@@ -256,7 +249,7 @@ private fun DocumentsTopBar(initials: String, onAccount: () -> Unit) {
             Box(
                 Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 10.dp, vertical = 3.dp)
             ) {
                 Text("Admin", color = TopBarPurple, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
@@ -306,8 +299,8 @@ private fun DocumentCard(item: DocumentListItem, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -324,7 +317,7 @@ private fun DocumentCard(item: DocumentListItem, onClick: () -> Unit) {
                     Text(
                         "${item.fileName} · ${formatFileSize(item.sizeBytes)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MutedText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -332,7 +325,7 @@ private fun DocumentCard(item: DocumentListItem, onClick: () -> Unit) {
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = MutedText
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -340,14 +333,14 @@ private fun DocumentCard(item: DocumentListItem, onClick: () -> Unit) {
                 Text(
                     "${doc.signed} de ${doc.total} assinaturas",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MutedText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
                 color = Purple,
-                trackColor = PurpleSoft
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
     }
@@ -369,9 +362,9 @@ private fun PdfBadge() {
 @Composable
 private fun StatusChip(status: DocumentStatus) {
     val (bg, fg) = when (status) {
-        DocumentStatus.PENDING -> PendingBg to PendingText
-        DocumentStatus.PARTIALLY_SIGNED -> PartialBg to PartialText
-        DocumentStatus.COMPLETED -> DoneBg to DoneText
+        DocumentStatus.PENDING -> toneColors(Tone.INFO)
+        DocumentStatus.PARTIALLY_SIGNED -> toneColors(Tone.WARNING)
+        DocumentStatus.COMPLETED -> toneColors(Tone.SUCCESS)
     }
     Box(
         Modifier.clip(RoundedCornerShape(50)).background(bg).padding(horizontal = 10.dp, vertical = 4.dp)

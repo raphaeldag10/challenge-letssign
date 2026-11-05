@@ -34,6 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import br.com.fiap.letssign.R
+import br.com.fiap.letssign.ui.theme.Tone
+import br.com.fiap.letssign.ui.theme.toneColors
 import br.com.fiap.letssign.ui.common.BrandLogo
 import br.com.fiap.letssign.ui.common.firstNameOf
 import br.com.fiap.letssign.ui.common.initialsOf
@@ -113,9 +115,6 @@ class SignatoryHomeViewModel(container: AppContainer, userId: Long) : ViewModel(
 }
 
 private val SignGreen = Color(0xFF22A447)
-private val PendingBg = Color(0xFFFFF4D6)
-private val PendingFg = Color(0xFF9A6700)
-private val SignedBg = Color(0xFFE3F5E8)
 private val PdfRed = Color(0xFFE5483D)
 private val CardShape = RoundedCornerShape(16.dp)
 private val ButtonShape = RoundedCornerShape(12.dp)
@@ -195,10 +194,10 @@ private fun HomeTopBar(user: LoggedUser, onAccount: () -> Unit) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(BrandBlueSoft)
+                .background(MaterialTheme.colorScheme.primaryContainer)
                 .clickable(onClick = onAccount)
         ) {
-            Text(initialsOf(user.fullName), color = BrandBlue, fontWeight = FontWeight.Bold)
+            Text(initialsOf(user.fullName), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -224,7 +223,7 @@ private fun Greeting(fullName: String, pendingCount: Int) {
         }
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(start = 12.dp).size(88.dp).background(BrandBlueSoft, CircleShape)
+            modifier = Modifier.padding(start = 12.dp).size(88.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_letssign_logo),
@@ -293,11 +292,11 @@ private fun SignatoryDocumentCard(doc: DocumentSummary, pending: Boolean, onSign
 private fun StatusChip(pending: Boolean) {
     Text(
         if (pending) "Pendente" else "Assinado",
-        color = if (pending) PendingFg else SignGreen,
+        color = if (pending) toneColors(Tone.WARNING).second else SignGreen,
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier
-            .background(if (pending) PendingBg else SignedBg, RoundedCornerShape(50))
+            .background(if (pending) toneColors(Tone.WARNING).first else toneColors(Tone.SUCCESS).first, RoundedCornerShape(50))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
 }
