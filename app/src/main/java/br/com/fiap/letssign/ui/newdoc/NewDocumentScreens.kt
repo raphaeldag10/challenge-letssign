@@ -152,6 +152,29 @@ private fun PeopleStep(vm: NewDocumentViewModel) {
             dismissButton = { TextButton(onClick = vm::cancelRemoval) { Text("Manter") } }
         )
     }
+
+    vm.replacingUserId?.let { oldId ->
+        val candidates = vm.people.filter { p -> vm.signatories.none { it.userId == p.id } }
+        AlertDialog(
+            onDismissRequest = { vm.replacingUserId = null },
+            title = { Text("Substituir signatário") },
+            text = {
+                Column {
+                    Text("Os campos posicionados serão mantidos e passam a ser da nova pessoa.")
+                    if (candidates.isEmpty()) {
+                        Text("Não há outras pessoas cadastradas disponíveis.", modifier = Modifier.padding(top = 8.dp))
+                    }
+                    candidates.forEach { p ->
+                        TextButton(onClick = { vm.replaceSignatory(oldId, p) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("${p.fullName} · ${p.email}")
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { vm.replacingUserId = null }) { Text("Cancelar") } }
+        )
+    }
 }
 
 @Composable
@@ -178,6 +201,7 @@ private fun PersonRow(vm: NewDocumentViewModel, person: UserEntity) {
                     )
                 }
             }
+            TextButton(onClick = { vm.replacingUserId = person.id }) { Text("Substituir por outra pessoa") }
         }
         HorizontalDivider(Modifier.padding(top = 8.dp))
     }
