@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
@@ -53,6 +54,9 @@ fun FormScaffold(
     content: @Composable (PaddingValues) -> Unit
 ) {
     Scaffold(
+        // Sobe o conteúdo e a barra inferior acima do teclado; o app usa edge-to-edge,
+        // então o adjustResize sozinho não reduz a área das telas.
+        modifier = Modifier.imePadding(),
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
