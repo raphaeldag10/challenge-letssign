@@ -69,13 +69,17 @@ import androidx.lifecycle.viewModelScope
 import br.com.fiap.letssign.AppContainer
 import br.com.fiap.letssign.data.local.entity.AuthMode
 import br.com.fiap.letssign.data.local.entity.UserEntity
+import androidx.compose.material.icons.outlined.AccountBox
+import br.com.fiap.letssign.data.repository.Cpf
+import br.com.fiap.letssign.ui.common.ActionShape
 import br.com.fiap.letssign.ui.common.EmptyState
 import br.com.fiap.letssign.ui.common.ErrorText
+import br.com.fiap.letssign.ui.common.FieldLabel
+import br.com.fiap.letssign.ui.common.FieldShape
+import br.com.fiap.letssign.ui.common.FormScaffold
+import br.com.fiap.letssign.ui.common.LabeledField
 import br.com.fiap.letssign.ui.common.appViewModel
 import kotlinx.coroutines.launch
-
-private val FieldShape = RoundedCornerShape(12.dp)
-private val ActionShape = RoundedCornerShape(16.dp)
 
 class SignatoriesViewModel(container: AppContainer) : ViewModel() {
     private val users = container.userRepository
@@ -97,7 +101,7 @@ class SignatoriesViewModel(container: AppContainer) : ViewModel() {
 @Composable
 fun SignatoriesScreen(container: AppContainer, onOpen: (Long) -> Unit, onNew: () -> Unit) {
     val vm = appViewModel { SignatoriesViewModel(container) }
-    SignatoryScaffold(
+    FormScaffold(
         title = "Signatários",
         bottomBar = {
             if (vm.all.isNotEmpty()) {
@@ -211,6 +215,9 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
     var phone by mutableStateOf("")
     var authMode by mutableStateOf(AuthMode.PASSWORD)
     var password by mutableStateOf("")
+    var cpf by mutableStateOf("")
+    /** CPF já preenchido pelo próprio signatário (o admin ainda pode alterar ou apagar). */
+    var cpfFromSignatory by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var busy by mutableStateOf(false)
     var loaded by mutableStateOf(signatoryId == null)
@@ -225,6 +232,8 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
                     email = it.email
                     phone = it.phone
                     authMode = it.authMode
+                    cpf = Cpf.format(it.cpf.orEmpty())
+                    cpfFromSignatory = it.cpf != null && !it.cpfLockedByAdmin
                 }
                 loaded = true
             }
@@ -238,9 +247,9 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
         viewModelScope.launch {
             try {
                 if (signatoryId == null) {
-                    users.registerSignatory(name, email, phone, authMode, password.ifBlank { null })
+                    users.registerSignatory(name, email, phone, authMode, password.ifBlank { null }, cpf)
                 } else {
-                    users.updateSignatory(signatoryId, name, email, phone, authMode, password.ifBlank { null })
+                    users.updateSignatory(signatoryId, name, email, phone, authMode, password.ifBlank { null }, cpf)
                 }
                 onDone()
             } catch (e: IllegalArgumentException) {
@@ -258,7 +267,7 @@ class SignatoryFormViewModel(private val container: AppContainer, private val si
 fun SignatoryFormScreen(container: AppContainer, signatoryId: Long?, onDone: () -> Unit) {
     val vm = appViewModel(key = "signatory-$signatoryId") { SignatoryFormViewModel(container, signatoryId) }
     var showPassword by remember { mutableStateOf(false) }
-    SignatoryScaffold(
+    FormScaffold(
         title = if (vm.isEditing) "Editar signatário" else "Novo signatário",
         onBack = onDone,
         bottomBar = {
@@ -299,6 +308,20 @@ fun SignatoryFormScreen(container: AppContainer, signatoryId: Long?, onDone: () 
                 placeholder = "Ex.: ana@empresa.com",
                 icon = Icons.Outlined.Email,
                 keyboardType = KeyboardType.Email
+            )
+            LabeledField(
+                label = "CPF",
+                required = false,
+                value = vm.cpf,
+                onValueChange = { vm.cpf = Cpf.format(it) },
+                placeholder = "000.000.000-00",
+                icon = Icons.Outlined.AccountBox,
+                keyboardType = KeyboardType.Number,
+                supportingText = if (vm.cpfFromSignatory) {
+                    "Preenchido pelo signatário. Ao informar um CPF aqui, ele passa a ser travado para o signatário."
+                } else {
+                    "Opcional. Se informado, o signatário não poderá alterá-lo."
+                }
             )
             LabeledField(
                 label = "Telefone",
@@ -379,49 +402,6 @@ private fun NewSignatoryIllustration(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun FieldLabel(text: String, required: Boolean) {
-    Text(
-        buildAnnotatedString {
-            append(text)
-            if (required) {
-                withStyle(SpanStyle(color = MaterialTheme.colorScheme.error)) { append(" *") }
-            }
-        },
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold
-    )
-}
-
-@Composable
-private fun LabeledField(
-    label: String,
-    required: Boolean,
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    icon: ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    trailing: (@Composable () -> Unit)? = null
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        FieldLabel(label, required)
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder) },
-            leadingIcon = { Icon(icon, contentDescription = null) },
-            trailingIcon = trailing,
-            visualTransformation = visualTransformation,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true,
-            shape = FieldShape,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
 private fun AuthModeOption(mode: AuthMode, selected: Boolean, onSelect: () -> Unit) {
     val borderColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     Row(
@@ -446,28 +426,3 @@ private fun AuthModeOption(mode: AuthMode, selected: Boolean, onSelect: () -> Un
     }
 }
 
-/** Scaffold das telas de signatário: título centralizado, seta de voltar e ação fixa no rodapé. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SignatoryScaffold(
-    title: String,
-    onBack: (() -> Unit)? = null,
-    bottomBar: @Composable () -> Unit = {},
-    content: @Composable (PaddingValues) -> Unit
-) {
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar")
-                        }
-                    }
-                }
-            )
-        },
-        bottomBar = bottomBar
-    ) { content(it) }
-}
