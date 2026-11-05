@@ -47,7 +47,9 @@ class PdfPages private constructor(
         fun open(path: String): PdfPages {
             val file = File(path)
             if (!file.exists()) throw PdfException("Arquivo não encontrado.")
-            val header = file.inputStream().use { it.readNBytes(5) }
+            val header = ByteArray(5)
+            val headerSize = file.inputStream().use { it.read(header) }
+            if (headerSize != header.size) throw PdfException("Selecione um arquivo PDF.")
             if (String(header) != "%PDF-") throw PdfException("Selecione um arquivo PDF.")
 
             val descriptor = try {

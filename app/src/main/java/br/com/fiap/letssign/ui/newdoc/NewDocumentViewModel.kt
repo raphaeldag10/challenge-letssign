@@ -73,6 +73,7 @@ class NewDocumentViewModel(private val container: AppContainer, private val vers
     var error by mutableStateOf<String?>(null)
     var notice by mutableStateOf<String?>(null)
     var loadingPdf by mutableStateOf(false)
+    var preparingScan by mutableStateOf(false)
     var busy by mutableStateOf(false)
 
     private var nextFieldId = 1L

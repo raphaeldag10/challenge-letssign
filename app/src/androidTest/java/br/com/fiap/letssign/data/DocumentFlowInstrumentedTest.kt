@@ -7,6 +7,7 @@ import br.com.fiap.letssign.data.local.AppDatabase
 import br.com.fiap.letssign.data.local.entity.DocumentEntity
 import br.com.fiap.letssign.data.local.entity.DocumentSignatoryEntity
 import br.com.fiap.letssign.data.local.entity.DocumentStatus
+import br.com.fiap.letssign.data.local.entity.SignatureMethod
 import br.com.fiap.letssign.data.local.entity.SignatoryRoleType
 import br.com.fiap.letssign.data.local.entity.SignatureFieldEntity
 import br.com.fiap.letssign.data.local.entity.UserEntity
@@ -108,8 +109,8 @@ class DocumentFlowInstrumentedTest {
             listOf(field(s1, 0.1f), field(s2, 0.3f))
         )
 
-        assertEquals(DocumentStatus.PARTIALLY_SIGNED, repo.signDocument(docId, s1, "/tmp/a.png"))
-        assertEquals(DocumentStatus.COMPLETED, repo.signDocument(docId, s2, "/tmp/b.png"))
+        assertEquals(DocumentStatus.PARTIALLY_SIGNED, repo.signDocument(docId, s1, "/tmp/a.png", SignatureMethod.DRAW, "Pessoa d@teste.com"))
+        assertEquals(DocumentStatus.COMPLETED, repo.signDocument(docId, s2, "/tmp/b.png", SignatureMethod.DRAW, "Pessoa e@teste.com"))
         assertEquals(DocumentStatus.COMPLETED, repo.getDocumentById(docId)?.status)
     }
 
@@ -126,9 +127,9 @@ class DocumentFlowInstrumentedTest {
             ),
             listOf(field(s1, 0.1f), field(s2, 0.3f))
         )
-        repo.signDocument(docId, s1, "/tmp/a.png")
+        repo.signDocument(docId, s1, "/tmp/a.png", SignatureMethod.DRAW, "Pessoa f@teste.com")
         try {
-            repo.signDocument(docId, s1, "/tmp/a2.png")
+            repo.signDocument(docId, s1, "/tmp/a2.png", SignatureMethod.DRAW, "Pessoa f@teste.com")
             fail("Esperava recusa de assinatura repetida")
         } catch (e: IllegalArgumentException) {
             assertEquals("Assinatura já registrada", e.message)

@@ -1,7 +1,5 @@
 package br.com.fiap.letssign.ui.newdoc
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
@@ -108,7 +106,7 @@ fun NewDocumentScreen(
                     ErrorText(vm.error)
                     Button(
                         onClick = { if (vm.step == STEP_TITLES.lastIndex) vm.send(onSent) else vm.next() },
-                        enabled = !vm.loadingPdf && !vm.busy,
+                        enabled = !vm.loadingPdf && !vm.preparingScan && !vm.busy,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                     ) {
@@ -180,9 +178,6 @@ private fun DocumentProgress(step: Int) {
 
 @Composable
 private fun DocumentStep(container: AppContainer, vm: NewDocumentViewModel) {
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) vm.importFromUri(uri, uri.lastPathSegment ?: "arquivo.pdf")
-    }
     val outline = MaterialTheme.colorScheme.outlineVariant
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -215,15 +210,31 @@ private fun DocumentStep(container: AppContainer, vm: NewDocumentViewModel) {
                         }
                     }
                     Text("Importar documento (PDF)", fontWeight = FontWeight.SemiBold)
-                    Text("Selecione no seu dispositivo o documento que deseja enviar para assinatura.",
+                    Text("Escolha um arquivo PDF ou fotografe um documento para digitalizar.",
                         textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                OutlinedButton(onClick = { picker.launch(arrayOf("application/pdf")) },
-                    enabled = !vm.loadingPdf, shape = RoundedCornerShape(10.dp)) {
-                    Icon(Icons.Filled.Add, null, Modifier.size(20.dp))
-                    Spacer(Modifier.size(8.dp))
-                    Text(if (vm.loadingPdf) "Lendo o PDF…" else if (vm.pdfPath == null) "Selecionar PDF" else "Trocar arquivo")
+                DocumentSourcePicker(
+                    label = when {
+                        vm.preparingScan -> "Preparando câmera…"
+                        vm.loadingPdf -> "Lendo o PDF…"
+                        vm.pdfPath == null -> "Selecionar PDF"
+                        else -> "Trocar arquivo"
+                    },
+                    enabled = !vm.loadingPdf && !vm.preparingScan && !vm.busy,
+                    onPdfSelected = vm::importFromUri,
+                    onError = { vm.error = it },
+                    onPreparingScan = {
+                        vm.preparingScan = it
+                        if (it) vm.error = null
+                    }
+                )
+                if (vm.preparingScan) {
+                    Text(
+                        "No primeiro uso, a preparação da câmera pode levar alguns instantes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
