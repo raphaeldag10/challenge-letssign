@@ -38,8 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import br.com.fiap.letssign.data.local.entity.UserRole
 import br.com.fiap.letssign.data.repository.LoggedUser
-import br.com.fiap.letssign.ui.theme.BrandBlue
-import br.com.fiap.letssign.ui.theme.BrandBlueSoft
 
 /**
  * Perfis que a conta pode usar. Cada conta tem um papel hoje, então só aparece ele;
@@ -77,7 +75,6 @@ fun ProfileChoiceScreen(user: LoggedUser, onContinue: () -> Unit, onBack: () -> 
         Spacer(Modifier.weight(1f))
         Button(
             onClick = onContinue,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
             modifier = Modifier.fillMaxWidth()
         ) { Text("Continuar") }
     }

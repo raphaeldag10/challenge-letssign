@@ -1,5 +1,6 @@
 package br.com.fiap.letssign.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -40,5 +41,21 @@ data class DocumentEntity(
     val parentDocumentId: Long? = null,
     val finalFilePath: String? = null,
     /** Nome original do PDF escolhido pelo Admin (ex.: contrato.pdf). Nulo em documentos anteriores à versão 4. */
-    val fileName: String? = null
+    val fileName: String? = null,
+    /** Modos de assinatura aceitos neste documento, separados por vírgula (ver [allowedMethods]). */
+    @ColumnInfo(defaultValue = ALL_SIGNATURE_METHODS)
+    val allowedSignatureMethods: String = ALL_SIGNATURE_METHODS
 )
+
+/** Valor padrão: todos os modos. Documentos anteriores à versão 8 recebem este valor. */
+const val ALL_SIGNATURE_METHODS = "DRAW,TYPED,CERTIFICATE"
+
+/** Modos que o admin liberou para este documento. */
+fun DocumentEntity.allowedMethods(): Set<SignatureMethod> =
+    allowedSignatureMethods.split(",")
+        .mapNotNull { name -> runCatching { SignatureMethod.valueOf(name.trim()) }.getOrNull() }
+        .toSet()
+
+/** Texto gravado no banco; mantém a ordem do enum para ser estável. */
+fun Set<SignatureMethod>.toStorage(): String =
+    SignatureMethod.entries.filter { it in this }.joinToString(",") { it.name }

@@ -48,8 +48,6 @@ import br.com.fiap.letssign.ui.common.FormScaffold
 import br.com.fiap.letssign.ui.common.FormSectionTitle
 import br.com.fiap.letssign.ui.common.LabeledField
 import br.com.fiap.letssign.ui.common.appViewModel
-import br.com.fiap.letssign.ui.theme.BrandBlue
-import br.com.fiap.letssign.ui.theme.BrandBlueSoft
 
 private const val MIN_PASSWORD_LENGTH = 8
 private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")

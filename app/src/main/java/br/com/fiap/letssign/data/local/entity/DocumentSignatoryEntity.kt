@@ -11,6 +11,13 @@ enum class SignatoryRoleType {
     TESTEMUNHA
 }
 
+/** Como o signatário assinou: desenhando, digitando o nome ou com certificado digital. */
+enum class SignatureMethod {
+    DRAW,
+    TYPED,
+    CERTIFICATE
+}
+
 @Entity(
     tableName = "document_signatories",
     foreignKeys = [
@@ -37,6 +44,16 @@ data class DocumentSignatoryEntity(
     val roleType: SignatoryRoleType,
     val hasSigned: Boolean = false,
     val signedAt: Long? = null,
-    /** Caminho do PNG da assinatura desenhada pelo participante. */
-    val signaturePath: String? = null
+    /** Caminho do PNG da assinatura desenhada ou digitada pelo participante. */
+    val signaturePath: String? = null,
+    /** Modo usado na assinatura. Nulo em assinaturas feitas antes da versão 6 (sempre desenhadas). */
+    val signatureMethod: SignatureMethod? = null,
+    /** Nome que o signatário assinou (digitado ou nome do titular do certificado). */
+    val signerName: String? = null,
+    /** CMS/CAdES destacado em Base64, só nas assinaturas com certificado ICP-Brasil. */
+    val signatureCms: String? = null,
+    /** Número de série do certificado usado (hexadecimal). */
+    val certificateSerial: String? = null,
+    /** Emissor do certificado usado. */
+    val certificateIssuer: String? = null
 )

@@ -15,8 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// Esquemas com a cor da marca em ambos os temas. Assim, os elementos que usam o azul
-// do LetsSign ficam legíveis no modo claro e no escuro.
+// Esquemas com a paleta roxa da marca em ambos os temas.
 private val DarkColorScheme = darkColorScheme(
     background = AppDarkSurface,
     surface = AppDarkSurface,
@@ -28,10 +27,10 @@ private val DarkColorScheme = darkColorScheme(
     surfaceBright = AppDarkSurface,
     // Sem sobreposição colorida na elevação: todas as superfícies ficam com o mesmo tom.
     surfaceTint = Color.Transparent,
-    primary = BrandBlueDark,
-    onPrimary = BrandOnBlueDark,
-    primaryContainer = BrandBlueContainerDark,
-    onPrimaryContainer = BrandOnBlueContainerDark,
+    primary = BrandPurpleDark,
+    onPrimary = BrandOnPurpleDark,
+    primaryContainer = BrandPurpleContainerDark,
+    onPrimaryContainer = BrandOnPurpleContainerDark,
     secondary = PurpleGrey80,
     tertiary = Pink80
 )
@@ -47,10 +46,10 @@ private val LightColorScheme = lightColorScheme(
     surfaceBright = AppLightSurface,
     // Sem sobreposição colorida na elevação: todas as superfícies ficam com o mesmo tom.
     surfaceTint = Color.Transparent,
-    primary = BrandBlue,
+    primary = BrandPurple,
     onPrimary = Color.White,
-    primaryContainer = BrandBlueSoft,
-    onPrimaryContainer = BrandOnBlueContainerLight,
+    primaryContainer = BrandPurpleContainer,
+    onPrimaryContainer = BrandOnPurpleContainer,
     secondary = PurpleGrey40,
     tertiary = Pink40
 )

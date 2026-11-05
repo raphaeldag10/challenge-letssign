@@ -1,19 +1,18 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
 }
 
 android {
     namespace = "br.com.fiap.letssign"
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "br.com.fiap.letssign"
         minSdk = 28
-        targetSdk = 37
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -36,6 +35,23 @@ buildTypes {
     buildFeatures {
         compose = true
     }
+    // BouncyCastle e jspecify trazem os mesmos arquivos de metadados (módulos Java 9+ e licenças),
+    // que não são usados no Android e fazem a fusão de recursos falhar.
+    packaging {
+        resources {
+            excludes += "META-INF/versions/9/**"
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/NOTICE*"
+        }
+    }
+}
+
+// Java (compileOptions acima) e Kotlin precisam do mesmo target. Sem isto, o Kotlin usa o JDK
+// do ambiente (ex.: 21 no Android Studio) e a compilação falha por target inconsistente.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 dependencies {
@@ -50,6 +66,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.room.runtime)
+    implementation(libs.pdfbox.android) {
+        // Evita duas cópias do BouncyCastle: usamos a versão 1.86 declarada abaixo.
+        exclude(group = "org.bouncycastle")
+    }
+    implementation(libs.bouncycastle.prov)
+    implementation(libs.bouncycastle.pkix)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)

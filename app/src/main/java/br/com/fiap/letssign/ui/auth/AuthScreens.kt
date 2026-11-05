@@ -43,7 +43,6 @@ import br.com.fiap.letssign.data.repository.LoggedUser
 import br.com.fiap.letssign.ui.common.BrandLogo
 import br.com.fiap.letssign.ui.common.ErrorText
 import br.com.fiap.letssign.ui.common.appViewModel
-import br.com.fiap.letssign.ui.theme.BrandBlue
 import kotlinx.coroutines.launch
 
 class AuthViewModel(private val container: AppContainer) : ViewModel() {
@@ -133,7 +132,6 @@ fun LoginScreen(container: AppContainer, onSetup: () -> Unit, onLoggedIn: (Logge
     val vm = appViewModel { AuthViewModel(container) }
     var showPassword by rememberSaveable { mutableStateOf(false) }
     var showCodeLogin by rememberSaveable { mutableStateOf(false) }
-    val buttonColors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
 
     Column(
         modifier = Modifier
@@ -184,7 +182,6 @@ fun LoginScreen(container: AppContainer, onSetup: () -> Unit, onLoggedIn: (Logge
         Button(
             onClick = { vm.login(onLoggedIn) },
             enabled = !vm.busy && vm.email.isNotBlank() && vm.password.isNotBlank(),
-            colors = buttonColors,
             modifier = Modifier.fillMaxWidth()
         ) { Text(if (vm.busy) "Entrando…" else "Entrar") }
 
@@ -227,8 +224,7 @@ fun LoginScreen(container: AppContainer, onSetup: () -> Unit, onLoggedIn: (Logge
                 Button(
                     onClick = { vm.loginWithCode(onLoggedIn) },
                     enabled = !vm.busy && vm.codeInput.length == 6,
-                    colors = buttonColors,
-                    modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth()
                 ) { Text("Confirmar código") }
             }
         }

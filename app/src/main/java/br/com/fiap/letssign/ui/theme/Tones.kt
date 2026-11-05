@@ -17,7 +17,7 @@ enum class Tone { INFO, WARNING, SUCCESS }
 fun toneColors(tone: Tone): Pair<Color, Color> {
     val dark = MaterialTheme.colorScheme.isDark
     return when (tone) {
-        Tone.INFO -> if (dark) Color(0xFF1E3A8A) to Color(0xFFBFD4FF) else Color(0xFFE3ECFF) to Color(0xFF1D4ED8)
+        Tone.INFO -> if (dark) BrandPurpleContainerDark to BrandOnPurpleContainerDark else BrandPurpleContainer to BrandOnPurpleContainer
         Tone.WARNING -> if (dark) Color(0xFF4A3800) to Color(0xFFFFD980) else Color(0xFFFFF3C4) to Color(0xFF8A5A00)
         Tone.SUCCESS -> if (dark) Color(0xFF14432A) to Color(0xFF9EF0BC) else Color(0xFFDCFCE7) to Color(0xFF15803D)
     }

@@ -3,6 +3,7 @@ package br.com.fiap.letssign.data.local.converter
 import androidx.room.TypeConverter
 import br.com.fiap.letssign.data.local.entity.DocumentStatus
 import br.com.fiap.letssign.data.local.entity.SignatoryRoleType
+import br.com.fiap.letssign.data.local.entity.SignatureMethod
 import br.com.fiap.letssign.data.local.entity.UserRole
 
 class Converters {
@@ -23,4 +24,10 @@ class Converters {
 
     @TypeConverter
     fun toSignatoryRoleType(value: String): SignatoryRoleType = SignatoryRoleType.valueOf(value)
+
+    @TypeConverter
+    fun fromSignatureMethod(value: SignatureMethod?): String? = value?.name
+
+    @TypeConverter
+    fun toSignatureMethod(value: String?): SignatureMethod? = value?.let { SignatureMethod.valueOf(it) }
 }

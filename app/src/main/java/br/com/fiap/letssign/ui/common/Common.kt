@@ -74,26 +74,6 @@ inline fun <reified VM : ViewModel> appViewModel(key: String? = null, crossinlin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScreenScaffold(
-    title: String,
-    onBack: (() -> Unit)? = null,
-    floatingAction: @Composable () -> Unit = {},
-    content: @Composable (PaddingValues) -> Unit
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    if (onBack != null) TextButton(onClick = onBack) { Text("Voltar") }
-                }
-            )
-        },
-        floatingActionButton = floatingAction
-    ) { content(it) }
-}
-
-@Composable
 fun CenteredLoading() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text("Carregando…")

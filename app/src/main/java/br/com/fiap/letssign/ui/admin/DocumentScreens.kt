@@ -35,9 +35,9 @@ import br.com.fiap.letssign.data.local.entity.DocumentStatus
 import br.com.fiap.letssign.data.local.model.DocumentSummary
 import br.com.fiap.letssign.data.local.model.SignatoryDetail
 import br.com.fiap.letssign.data.repository.LoggedUser
+import br.com.fiap.letssign.ui.common.FormScaffold
 import br.com.fiap.letssign.ui.common.EmptyState
 import br.com.fiap.letssign.ui.common.ErrorText
-import br.com.fiap.letssign.ui.common.ScreenScaffold
 import br.com.fiap.letssign.ui.common.appViewModel
 import br.com.fiap.letssign.ui.common.formatDate
 import br.com.fiap.letssign.ui.common.openPdf
@@ -106,7 +106,7 @@ fun DocumentDetailScreen(
 ) {
     val vm = appViewModel(key = "detail-$documentId") { DocumentDetailViewModel(container, documentId, user) }
     val context = LocalContext.current
-    ScreenScaffold(title = "Documento", onBack = onBack) { padding ->
+    FormScaffold(title = "Documento", onBack = onBack) { padding ->
         val doc = vm.document
         when {
             vm.allowed == null -> Unit
