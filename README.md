@@ -344,12 +344,3 @@ challenge-letssign/
 - **Build de release sem assinatura.** O APK gerado é de debug. O ProGuard está desabilitado (`isMinifyEnabled = false`).
 - **Acessibilidade em aperfeiçoamento.** O editor de campos ainda não tem zoom nem alternativa sem arrastar, e nem todos os elementos têm rótulos para leitor de tela.
 
----
-
-## 9. Documentação complementar
-
-- Escopo da Sprint 1: [`design/ESCOPO-SPRINT-1.md`](design/ESCOPO-SPRINT-1.md)
-- Guia de telas: [`design/GUIA-DE-TELAS.md`](design/GUIA-DE-TELAS.md)
-- Login local: [`docs/LOGIN-LOCAL.md`](docs/LOGIN-LOCAL.md)
-- Digitalização pela câmera: [`docs/DIGITALIZACAO.md`](docs/DIGITALIZACAO.md)
-- Enunciado do Challenge: `2TDS_RS_Challenge LetsSign_2027.pptx_RevFinal.pdf` (fora do repositório)
